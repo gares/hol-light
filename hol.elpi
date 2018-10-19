@@ -1,0 +1,189 @@
+% terms %%%%%%%%%%%%%%%%
+
+kind term type. % a preterm actually
+
+type app     term -> term -> term.
+type varb    string -> ty -> term.
+type lam     term -> term -> term.
+type typing  term -> ty -> term.
+type const   string -> ty -> term.
+
+kind ty type. % a pretype actually
+
+type tyvar   string -> ty.
+type tyapp   string -> list ty -> ty.
+
+kind tys type.
+
+type mono ty -> tys.
+type all  (ty -> tys) -> tys.
+
+pred refresh-tys i:tys, o:ty.
+
+refresh-tys (mono T) T.
+refresh-tys (all F) T :- refresh-tys (F FRESH_) T.
+
+pred of i:term, o:ty, o:term.
+
+macro @dummy :- tyapp "" [].
+
+of (varb S _) T (const S1 T) :-
+  hol.interface S [],
+  hol.env S T1, refresh-tys T1 T, S = S1.
+  % HACK (fixme in elpi): 
+  % to avoid a complex round trip
+  % UVar -> Stv -> UVar 
+
+of (varb S _) T (const S1 T) :-
+  hol.interface S L,
+  std.mem L (pr S1 T).
+
+
+of (varb S @dummy) T (varb S T).
+
+of (lam V B) (tyapp "fun" [Src,Tgt]) (lam (varb S Src) B1) :-
+  of V Src (varb S Src),
+  (of (varb S _) Src (varb S Src) :- !) =>
+    of B Tgt B1.
+
+of (typing T TY) TY T1 :- of T TY T1.
+
+of (app H A) Tgt (app H1 A1) :-
+  of H (tyapp "fun" [Src,Tgt]) H1,
+  of A Src A1.
+
+of T (tyapp "real" []) T3 :-
+  of T (tyapp "num" []) T1,
+  T2 = app (varb "real_of_num" @dummy) T1,
+  of T2 (tyapp "real" []) T3.
+
+pred err. % avoid looping
+
+% of T ETY _ :- not (err),
+%   ((err => of T TY _) ; TY = tyapp "no-type" []),
+%   Msg is {pp T} ^ " is :" ^ {ppt TY} ^
+%                   " but must be :" ^ {ppt ETY},
+%   halt Msg.
+
+pred refresh i:ty, o:ty.
+refresh TY TY1 :- std.spy(variables TY [] V), std.spy(mk-subst-ty V S), S => copy-ty TY TY1.
+
+variables (tyvar _ as X) L L :- std.mem L X, !.
+variables (tyvar _ as X) L [X|L].
+variables (tyapp _ []) L L. 
+variables (tyapp S [A|AS]) L L2 :-
+  variables A L L1, variables (tyapp S AS) L1 L2. 
+
+pred mk-subst-ty i:list ty, o:list prop.
+
+mk-subst-ty [] [].
+mk-subst-ty [X|XS] [copy-ty X FRESH_ | YS] :- mk-subst-ty XS YS.
+
+% "pretty" printer %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+pred pp i:term, o:string.
+
+pp (app A B) S :- pp-app (app A B) [] S.
+pp (varb S _) S.
+pp (typing T TY) S :- S is "(" ^ {pp T} ^ " : " ^ {ppt TY} ^ ")".
+pp (lam T B) S :- S is "λ" ^ {pp T} ^ ". " ^ {pp B}.
+
+pred pp-app i:term, o:list term, o:string.
+
+pp-app (app A B) L S :- !, pp-app A [B|L] S.
+pp-app T L S :- S is "(" ^ {pp T} ^ {pp-list {std.rev L}} ^ ")".
+
+pred pp-list i:list term, o:string.
+
+pp-list [] "".
+pp-list [X|XS] S :- S is " " ^ {pp X} ^ {pp-list XS}. 
+
+pred ppt i:ty, o:string.
+
+ppt (tyapp S []) S.
+ppt (tyapp "fun" [A,B]) S :- S is {ppt A} ^ " -> " ^ {ppt B}.
+ppt (tyapp HD ARGS) S :- S is HD ^ {ppt-list ARGS}.
+
+pred ppt-list i:list ty, o:string.
+
+ppt-list [] "".
+ppt-list [X|XS] S :- S is " " ^ {ppt X} ^ {ppt-list XS}.
+
+% main %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+pred elab i:term, o:term.
+
+elab X Y :- of X T Y, print "elab" X " -> " Y ":" T.
+
+test S :- hol.env S T, print T.
+
+% library %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+pred copy i:term, o:term.
+
+copy (app A B) (app A1 B1) :- copy A A1, copy B B1.
+copy (varb S TY) (varb S TY1) :- copy-ty TY TY1.
+copy (lam V T) (lam V1 T1) :- copy V V1, copy T T1.
+copy (typing T TY) (typing T1 TY1) :- copy T T1, copy-ty TY TY1.
+copy (const S TY) (const S TY1) :- copy-ty TY TY1.
+
+pred copy-ty i:ty, o:ty.
+
+copy-ty (tyvar S) (tyvar S).
+copy-ty (tyapp S L) (tyapp S L1) :- copy-ty-list L L1.
+
+pred copy-ty-list i:list ty, o:list ty.
+
+copy-ty-list [] [].
+copy-ty-list [T|TS] [T1|TS1] :- copy-ty T T1, copy-ty-list TS TS1.
+
+
+/*
+prove [p X (d X) |..] [not(p X) (d Y)|..] (r X=Y) :-...
+
+eval (app H A) X (l J1 J2) :-
+  eval H (lam B) J1, eval A V J2, X = list B V.
+
+
+kind thm type.
+
+type  refl    term -> thm.
+type  assume  term -> thm.
+type  conj    thm -> thm -> thm.
+type  arith   term -> thm.
+
+pred p . . . 
+
+prove (sequent _ {{ lp:X = lp:X }} (refl X)).
+prove (sequent [ P | G] P (weak G (assume P)). 
+
+prove (sequent G {{ lp:P => lp:R }} (... J ..) :-
+  prove (sequent [P|G] R J).
+
+prove (sequent [ {{ lp:P /\ lp:Q }} | G ] R (conj_l J) :-
+  prove (sequent [P,Q|G] R J).
+    
+prove (sequent G P J) :- subset (symbols G P) ["+" 
+
+
+
+? prove (sequent `X = 4`)  
+
+?x. x = 4  
+
+             4 = 4
+(ex_intro 4  refl      )   (refl 4)).    
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+test :-
+  hol.thm "ADD_0" S, print S,
+  print {{ \x. x + 1 }},
+
+  print {{: bool^(2) }},
+  print {{:pre \x. x + 1}},
+  hol.env "+" T, print T,
+  print {{: a^(3) }}.
+*/
+

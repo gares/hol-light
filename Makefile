@@ -144,3 +144,7 @@ install: hol hol.multivariate hol.sosa hol.card hol.complex; cp hol hol.multivar
 # Clean up all compiled files
 
 clean:; rm -f update_database.ml pa_j.ml pa_j.cmi pa_j.cmo hol hol.multivariate hol.sosa hol.card hol.complex;
+
+run:
+	readline-editor -- ocaml -I `camlp5 -where`
+	

@@ -154,7 +154,7 @@ let rec preterm_of_term tm =
 (* Main pretype->type, preterm->term and retypechecking functions.           *)
 (* ------------------------------------------------------------------------- *)
 
-let type_of_pretype,term_of_preterm,retypecheck =
+let type_of_pretype,term_of_preterm,retypecheck,pmk_numeral,get_generic_type =
   let tyv_num = ref 0 in
   let new_type_var() = let n = !tyv_num in (tyv_num := n + 1; Stv(n)) in
 
@@ -447,4 +447,4 @@ let type_of_pretype,term_of_preterm,retypecheck =
     let ptm'' = solve_preterm env' ptm' in
     ptm'' in
 
-  type_of_pretype,term_of_preterm,retypecheck;;
+  type_of_pretype,term_of_preterm,retypecheck,pmk_numeral,get_generic_type;;

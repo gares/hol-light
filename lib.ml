@@ -772,7 +772,7 @@ let rec choose t =
 
 let pp_print_fpf fmt (f:('a,'b)func) = Format.pp_print_string fmt "<func>";;
 
-let print_fpf = pp_print_fpf Format.std_formatter;;
+let print_fpf : (int,int) func -> unit = pp_print_fpf Format.std_formatter;;
 
 #install_printer pp_print_fpf;;
 

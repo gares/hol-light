@@ -145,6 +145,21 @@ install: hol hol.multivariate hol.sosa hol.card hol.complex; cp hol hol.multivar
 
 clean:; rm -f update_database.ml pa_j.ml pa_j.cmi pa_j.cmo hol hol.multivariate hol.sosa hol.card hol.complex;
 
+define build =
+  ocamlfind ocamlc -package num,camlp5,elpi -bin-annot \
+	  -I $(shell camlp5 -where) -pp './pp_build' -c $(1)
+endef
+
+merlin:
+	$(call build,system.ml)
+	$(call build,lib.ml)
+	$(call build,fusion.ml)
+	$(call build,basics.ml)
+	$(call build,nets.ml)
+	$(call build,printer.ml)
+	$(call build,preterm.ml)
+	$(call build,parser.ml)
+
 run:
 	readline-editor -- ocaml -I `camlp5 -where`
 	

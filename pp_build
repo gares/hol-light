@@ -1,0 +1,36 @@
+#!/bin/bash
+
+
+if [ "$1" = "-merlin" ]; then
+	MERLIN=1
+	shift
+fi
+
+BACKUP=$1.bak
+cp $1 $BACKUP
+TMP=$1
+
+if [ '(' "$1" = "system.ml" ')' -o '(' "$MERLIN" = 1 ')' ]; then
+	> $TMP
+else
+	echo -en "set_jrh_lexer;;\nopen Num;;\n" > $TMP
+fi
+
+cat $BACKUP |\
+sed 's/^#\(load\|install_printer\|use\|require\).*//' |\
+sed 's/^needs "lib.ml"/open Lib/' |\
+sed 's/^needs "fusion.ml"/open Lib;; open Fusion/' |\
+sed 's/^needs "basics.ml"/open Lib;; open Fusion;; open Basics/' |\
+sed 's/^needs "nets.ml"/open Lib;; open Fusion;; open Basics;; open Nets/' |\
+sed 's/^needs "printer.ml"/open Lib;; open Fusion;; open Basics;; open Nets;; open Printer/' |\
+sed 's/^needs "preterm.ml"/open Lib;; open Fusion;; open Basics;; open Nets;; open Printer;; open Preterm/' |\
+sed 's/^needs "parser.ml"/open Lib;; open Fusion;; open Basics;; open Nets;; open Printer;; open Preterm;; open Parser/' |\
+cat >> $TMP
+
+if [ "$MERLIN" = 1 ]; then
+  echo -n 'let set_jrh_lexer = ();; let unset_jrh_lexer = ();; '
+  cat $TMP
+else
+  camlp5o -I `ocamlc -where` ./pa_j.cmo $TMP
+fi
+mv $BACKUP $1

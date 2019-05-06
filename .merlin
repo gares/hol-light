@@ -1,0 +1,6 @@
+PKG elpi
+PKG num
+PKG camlp5
+S .
+B .
+FLG -pp './pp_build -merlin'

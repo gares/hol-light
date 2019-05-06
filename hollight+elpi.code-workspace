@@ -1,0 +1,25 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"files.exclude": {
+			"ProofTrace/**/*.names": true,
+			"ProofTrace/**/*.proofs": true,
+			"ProofTrace/**/*.theorems": true,
+			"**/.DS_Store": true,
+			"**/*.cmi": true,
+			"**/*.cmo": true,
+			"**/*.o": true,
+			"**/*.cmx": true,
+			"**/pa_j.ml": true,
+			"**/*.cmt": true,
+			"**/update_database.ml": true,
+			"**/.*.un~": true,
+			"**/.*.swp": true,
+			"**/*.dmtcp": true
+		}
+	}
+}

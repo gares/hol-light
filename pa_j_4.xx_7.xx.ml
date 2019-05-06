@@ -999,6 +999,12 @@ value rec qstring ctx bp =
   | (any ctx) (qstring ctx bp)!
   | -> err ctx (bp, $pos) "quotation not terminated" ]
 ;
+value rec qqstring ctx bp =
+  lexer
+  [ "``"/
+  | (any ctx) (qqstring ctx bp)!
+  | -> err ctx (bp, $pos) "elpi quotation not terminated" ]
+;
 
 value comment ctx bp =
   comment where rec comment =
@@ -1211,6 +1217,7 @@ value next_token_after_spaces ctx bp =
   | "'" -> keyword_or_error ctx (bp, $pos) "'"
   | "\""/ (string ctx bp)! -> ("STRING", $buf)
 (*** Line added by JRH ***)
+  | "``"/ (qqstring ctx bp)! -> ("QUOTATION", "elp:" ^ $buf)
   | "`"/ (qstring ctx bp)! -> ("QUOTATION", "tot:" ^ $buf)
   | "$"/ (dollar ctx bp)!
   | [ '!' | '=' | '@' | '^' | '&' | '+' | '-' | '*' | '/' | '%' ] ident2! ->

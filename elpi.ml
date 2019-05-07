@@ -6,14 +6,19 @@ module Elpi : sig
     
   type elpi_code
 
+  (* compile elpi files *)
   val files : string list -> elpi_code
-  val query : ?max_steps:int -> elpi_code -> string -> unit
   val hol : unit -> elpi_code
-  val trace : string list -> unit
-  val quotation : string -> preterm
 
+  (* run a query *)
+  val query : ?max_steps:int -> elpi_code -> string -> unit
+
+  (* activate debugging, eventually focus on some Elpi predicates *)
   type debug = On of string list | Off
   val debug : debug -> unit
+
+  (* The ``quotation`` calling Elpi's elab predicate *)
+  val quotation : string -> preterm
         
 end = struct 
 
@@ -65,6 +70,11 @@ end = struct
         Ptycon(readback_string ~depth s,
                List.map (readback_prety ~depth) (lp_list_to_list ~depth l))
     | App(c, s, []) when c == tyvarc -> Utv(readback_string ~depth s)
+    | Discard ->
+           let n = !invented_no in
+           invented_no := n - 1;
+           invented_tyvars := (fresh_uvar_body (),n) :: !invented_tyvars;
+           Stv n
     | (UVar(r,_,_) | AppUVar(r,_,_)) ->
          begin try
            Stv (List.assq r !invented_tyvars)
@@ -102,12 +112,12 @@ end = struct
   let readback_prety_schema ~depth t =
     let rec readback_mono ~depth subst t =
       match look ~depth t with
-      | App(c,s,args) when c == tyappc ->
+      | App(c,s,[args]) when c == tyappc ->
           mk_type (readback_string ~depth s,
-                   List.map (readback_mono ~depth subst) args)
+                   List.map (readback_mono ~depth subst) (E.Utils.lp_list_to_list ~depth args))
       | App(c,s,[]) when c == tyvarc -> assert false
       | Const i -> List.assoc i subst
-      | _ -> assert false
+      | _ -> type_error ("readback_mono: " ^ E.Pp.Raw.show_term t)
     in
     let rec readback_all ~depth subst t =
       match look ~depth t with
@@ -128,7 +138,7 @@ end = struct
   let rec embed_preterm ~depth t =
     match t with
     | Varp(s,ty) -> mk_var s (embed_prety ~depth ty)
-    | Constp _ -> assert false
+    | Constp (s,ty) -> mk_const s (embed_prety ~depth ty)
     | Combp(t1,t2) -> mk_app (embed_preterm ~depth t1) (embed_preterm ~depth t2)
     | Absp(t1,t2) -> mk_lam (embed_preterm ~depth t1) (embed_preterm ~depth t2)
     | Typing(t,ty) -> mk_typing (embed_preterm ~depth t) (embed_prety ~depth ty)
@@ -318,28 +328,38 @@ end = struct
   ;;
   *)
 
-  let hol_pretype : pretype E.BuiltInPredicate.data = {
-    E.BuiltInPredicate.ty = E.BuiltInPredicate.TyName "ty";
-    doc = "";
+  module Builtins = struct
+
+  open E.BuiltInPredicate;;
+  open Notation;;
+
+  let hol_pretype : pretype data = {
+    ty = TyName "ty";
+    doc = "Preterm.pretype";
     embed = (fun ~depth _ { E.Data.state = s } ty ->
       s, embed_prety ~depth:0 ty, []);
     readback = (fun ~depth _ { E.Data.state = s } ty ->
       s, readback_prety ~depth ty);
   }
 
-  let hol_pretype_schema : hol_type E.BuiltInPredicate.data = {
-    E.BuiltInPredicate.ty = E.BuiltInPredicate.TyName "tys";
-    doc = "";
+  let hol_pretype_schema : hol_type data = {
+    ty = TyName "tys";
+    doc = "Fusion.Hol.hol_type";
     embed = (fun ~depth _ { E.Data.state = s } ty ->
       s, embed_prety_schema ~depth:0 (tyvars ty,ty), []);
     readback = (fun ~depth _ { E.Data.state = s } ty ->
       s, readback_prety_schema ~depth ty);
   }
 
-  module Builtins = struct
+  let hol_preterm : preterm data = {
+    ty = TyName "term";
+    doc = "Preterm.preterm";
+    embed = (fun ~depth _ { E.Data.state = s } t ->
+      s, embed_preterm ~depth t, []);
+    readback = (fun ~depth _ { E.Data.state = s } t ->
+      s, readback_preterm ~depth t);
+  }
 
-  open E.BuiltInPredicate;;
-  open Notation;;
 
   let declarations = [
     LPDoc "========================== HOL-Light ===========================";
@@ -355,26 +375,70 @@ end = struct
     DocNext);
 
 *)
+
+    LPDoc "-------------------- environment -----------------------------";
+
     MLCode (Pred("hol.env",
       In(string,"constant name",
       Out(hol_pretype_schema, "constant type",
-      Easy("lookup type of known constant"))),
+      Easy("lookup the type of known constant"))),
     (fun name _ ~depth:_ ->
        try !: (get_const_type name)
        with Failure _ -> raise No_clause)),
     DocNext);
 
     MLCode (Pred("hol.interface",
-      In(string,"constant name",
-      Out(list (Elpi_builtin.pair string hol_pretype), "constant type",
-      Easy("lookup type of known constant"))),
+      In(string,"constant overloaded name",
+      Out(list (Elpi_builtin.pair string hol_pretype), "constant name and type",
+      Easy("lookup the interpretations of overloaded constant"))),
     (fun name _ ~depth ->
        let l = mapfilter (fun (x,(s,t)) ->
                if x = name then s, pretype_of_type t
                else fail()) !the_interface in
-        !: l 
-       )),
-    DocNext)
+        !: l)),
+    DocNext);
+
+    MLCode (Pred("hol.pmk_numeral",
+      In(string,"possibly a numeral",
+      Out(hol_preterm,"the number",
+      Easy "when the given string is a numeral it outputs its preterm")),
+    (fun str _ ~depth ->
+       if can num_of_string str then !: (pmk_numeral (num_of_string str))
+       else raise No_clause)),
+    DocNext);
+
+    LPDoc "-------------------- printing -----------------------------";
+
+    MLCode (Pred("hol.term->string",
+      In(hol_preterm,"T",
+      Out(string,"S",
+      Easy "typechecks T and prints it to S")),
+    (fun t _ ~depth ->
+       try
+         !: (string_of_term (term_of_preterm t))
+       with Failure _ -> !: "(illtyped)")),
+    DocAbove);
+
+    MLCode (Pred("hol.ty->string",
+      In(hol_pretype,"Ty",
+      Out(string,"S",
+      Easy "typechecks Ty and prints it to S")),
+    (fun t _ ~depth ->
+       try
+         !: (string_of_type (type_of_pretype t))
+       with Failure _ -> !: "(illtyped)")),
+    DocAbove);
+
+    MLCode (Pred("hol.tys->string",
+      In(hol_pretype_schema,"Tys",
+      Out(string,"S",
+      Easy "typechecks Tys and prints it to S")),
+    (fun t _ ~depth ->
+       try
+         !: (string_of_type t)
+       with Failure _ -> !: "(illtyped)")),
+    DocAbove);
+
 
 
   ]
@@ -382,6 +446,9 @@ end = struct
 
   end
 
+  (* Elpi initialization. header holds the contents of hol-builtin.elpi,
+     that is Elpi's standard predicates plus the ones in the Builtins module
+     above *)
   let header, _ =
     let elpi_flags =
       try
@@ -411,8 +478,6 @@ end = struct
 
   let hol () = files ["hol.elpi"];;
 
-  let trace = Setup.trace;;
-
   type debug = On of string list | Off
 
   let debugging = ref Off
@@ -424,10 +489,10 @@ end = struct
         "-trace-only";"run";"-trace-only";"assign";"-trace-only";"select"] in
       let only_preds =
         List.flatten (List.map (fun p -> ["-trace-only-pred";p]) preds) in
-      trace (std_opts @ only_preds);
+      Setup.trace (std_opts @ only_preds);
       debugging := On preds
    | Off ->
-      trace [];
+      Setup.trace [];
       debugging := Off
   ;;
 
@@ -446,6 +511,8 @@ end = struct
         Format.printf "Timeout\n"
   ;;
 
+  (* we store in the state the name of the query argument standing for
+     the elaborated term (the output of the elaboration) *)
   let elab_cc =
     E.Compile.State.declare ~name:"elab-out" ~init:(fun () -> "")
       ~pp:(fun f s -> Format.fprintf f "%s" s)
@@ -456,40 +523,49 @@ end = struct
       ~init:(E.CustomState.CompilerState(elab_cc,fun x -> x))
   ;;
 
+  (* This is the entry point predicate for calling the elaborator *)
   let elabc = E.Data.Constants.from_stringc "elab" ;;
+
+  (* This runs the elpi query requesting the elaboration of a given term *)
+  let elaborate p =
+    let q = E.Compile.query (hol ()) (fun ~depth st ->
+      let t = embed_preterm ~depth p in
+      let st, n, x = E.Compile.fresh_Arg st ~name_hint:"E" ~args:[] in
+      let st = E.Compile.State.set elab_cc st n in
+      st, (Ast.Loc.initial "(quotation)",mkApp elabc t [x])) in
+
+    (* We disable traces when we typecheck the elpi code (Elpi's type checker
+       is an elpi program too) *)
+    let are_we_debugging = !debugging in
+    Setup.trace [];
+    let _ = Compile.static_check header q in
+    debug are_we_debugging;
+
+    let exe = Compile.link q in
+    invented_no := (-1);
+    invented_tyvars := [];
+    match Execute.once exe with
+    | Execute.Success sol ->
+        let { state = s; assignments = a } as sol = E.Data.of_solution sol in
+        let x = E.CustomState.get elab_st s in
+        let t = Data.StrMap.find x a in
+        readback_preterm ~depth:0 t
+    | Failure -> failwith "elaboration error"
+    | NoMoreSteps -> assert false
+  ;;
 
   let quotation s =
     let p, l = parse_preterm (lex (explode s)) in
     if l <> [] then failwith "Unparsed input"
-    else
-      let q = E.Compile.query (hol ()) (fun ~depth st ->
-        let t = embed_preterm ~depth p in
-        let st, n, x = E.Compile.fresh_Arg st ~name_hint:"E" ~args:[] in
-        let st = E.Compile.State.set elab_cc st n in
-        st, (Ast.Loc.initial "(quotation)",mkApp elabc t [x])) in
-      let are_we_debugging = !debugging in
-      trace [];
-      let _ = Compile.static_check header q in
-      debug are_we_debugging;
-      let exe = Compile.link q in
-      invented_no := (-1);
-      invented_tyvars := [];
-      match Execute.once exe with
-      | Execute.Success sol ->
-          let { state = s; assignments = a } as sol = E.Data.of_solution sol in
-          let x = E.CustomState.get elab_st s in
-          let t = Data.StrMap.find x a in
-          readback_preterm ~depth:0 t
-      | Failure -> failwith "elaboration error"
-      | NoMoreSteps -> assert false
+    else elaborate p
   ;;
 
   let () = Quotation.add "elp" (Quotation.ExStr (fun _ s ->
     "Elpi.quotation \""^String.escaped s^"\""));;
 
-
   set_jrh_lexer;;
 
 end
 
-
+(* little test *)
+let () = Elpi.query (Elpi.hol ()) "self-test";;

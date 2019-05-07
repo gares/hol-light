@@ -114,9 +114,30 @@ pred elab i:term, o:term.
 
 elab X Y :- of X T Y, print "elab" X " -> " Y ":" T.
 
-test S :- hol.env S T, print T.
+pred self-test.
+
+self-test :-
+  print {hol.term->string (lam (varb "x" _) (varb "x" _))},
+
+  print {hol.ty->string (tyapp "num" [])},
+  
+  hol.interface "+" L,
+  std.map L (map-pr (=) hol.ty->string) L1,
+  print "interface + = " L1,
+  hol.interface "whatever" [],
+  
+  print "int_min : " {hol.tys->string {hol.env "int_min"}},
+  not (hol.env "whatever" _),
+
+  print "raw numeral 2 =" {hol.pmk_numeral "2"},
+  print "42 =" {hol.term->string {hol.pmk_numeral "42"}},
+  not(hol.pmk_numeral "x" _).
 
 % library %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+pred map-pr i:(A -> B -> prop), i:(C -> D -> prop), i:pair A C, o:pair B D.
+
+map-pr F G (pr A B) (pr A1 B1) :- F A A1, G B B1.
 
 pred copy i:term, o:term.
 

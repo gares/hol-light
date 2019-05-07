@@ -571,15 +571,32 @@ any->string X Y :- term_to_string X Y.
 
 % ========================== HOL-Light ===========================
 
-external pred hol.env % lookup type of known constant
+% -------------------- environment -----------------------------
+
+external pred hol.env % lookup the type of known constant
   i:string, % constant name
   o:tys.    % constant type
   
-external pred hol.interface % lookup type of known constant
-  i:string, % constant name
+external pred hol.interface % lookup the interpretations of overloaded constant
+  i:string, % constant overloaded name
   o:list (pair string ty).
-   % constant type
+   % constant name and type
   
+external pred hol.pmk_numeral % when the given string is a numeral it outputs its preterm
+  i:string, % possibly a numeral
+  o:term.   % the number
+  
+% -------------------- printing -----------------------------
+
+% [hol.term->string T S] typechecks T and prints it to S
+external pred hol.term->string i:term, o:string.
+
+% [hol.ty->string Ty S] typechecks Ty and prints it to S
+external pred hol.ty->string i:ty, o:string.
+
+% [hol.tys->string Tys S] typechecks Tys and prints it to S
+external pred hol.tys->string i:tys, o:string.
+
 
 
 

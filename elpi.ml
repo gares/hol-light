@@ -61,30 +61,45 @@ end = struct
     | Stv _ -> assert false
   ;;
 
-  let invented_no = ref (-1);;
-  let invented_tyvars = ref [];; 
+  (* State component mapping elpi unification variables to HOL-light's 
+    invented (system) type variables *)
+  let invented_tyvars =
+    E.CustomState.declare ~name:"invented-tyvars"
+      ~pp:(fun f (_,l) ->
+        let pp_elem fmt (ub,(lvl,stvno)) =
+          Format.fprintf fmt "(%a,%d)"
+            (E.Pp.term lvl) (mkUVar ub lvl 0)
+            stvno in
+        Format.fprintf f "%a" (E.Pp.list pp_elem ";") l)
+      ~init:(E.CustomState.Other(fun () -> -1, []))
+  ;;
 
-  let rec readback_prety ~depth t =
-    match look ~depth t with
-    | App(c, s, [l]) when c == tyappc ->
-        Ptycon(readback_string ~depth s,
-               List.map (readback_prety ~depth) (lp_list_to_list ~depth l))
-    | App(c, s, []) when c == tyvarc -> Utv(readback_string ~depth s)
-    | Discard ->
-           let n = !invented_no in
-           invented_no := n - 1;
-           invented_tyvars := (fresh_uvar_body (),n) :: !invented_tyvars;
-           Stv n
-    | (UVar(r,_,_) | AppUVar(r,_,_)) ->
-         begin try
-           Stv (List.assq r !invented_tyvars)
-         with Not_found ->
-           let n = !invented_no in
-           invented_no := n - 1;
-           invented_tyvars := (r,n) :: !invented_tyvars;
-           Stv n
-         end
-    | _ -> type_error ("readback_prety: " ^ E.Pp.Raw.show_term t)
+  let readback_prety ~depth state t =
+    let state = ref state in
+    let new_Stv ?(r=fresh_uvar_body ()) lvl =
+      let s, t = E.CustomState.update_return invented_tyvars !state
+        (fun (no,vars) -> (no-1, (r,(lvl,no)):: vars), Stv no) in
+      state := s;
+      t
+      in
+    let find_Stv r lvl =
+      try
+        let _, vars = E.CustomState.get invented_tyvars !state in
+        let _, no = List.assq r vars in
+        Stv no
+      with Not_found -> new_Stv ~r lvl in
+    let rec aux t =
+      match look ~depth t with
+      | App(c, s, [l]) when c == tyappc ->
+          Ptycon(readback_string ~depth s,
+                 List.map aux (lp_list_to_list ~depth l))
+      | App(c, s, []) when c == tyvarc -> Utv(readback_string ~depth s)
+      | Discard -> new_Stv depth
+      | (UVar(r,lvl,_) | AppUVar(r,lvl,_)) -> find_Stv r lvl (* NO args? *)
+      | _ -> type_error ("readback_prety: " ^ E.Pp.Raw.show_term t)
+    in
+    let t = aux t in
+    !state, t
   ;;
 
   let monoc = Constants.from_stringc "mono"
@@ -144,16 +159,22 @@ end = struct
     | Typing(t,ty) -> mk_typing (embed_preterm ~depth t) (embed_prety ~depth ty)
   ;;
 
-  let rec readback_preterm ~depth t =
+  let rec readback_preterm ~depth state t =
     match look ~depth t with
     | App(c,s,[ty]) when c == varc ->
-        Varp(readback_string ~depth s,readback_prety ~depth ty)
+        let state, ty = readback_prety ~depth state ty in
+        state, Varp(readback_string ~depth s,ty)
     | App(c,s,[ty]) when c == constc ->
-        Constp(readback_string ~depth s,readback_prety ~depth ty)
+        let state, ty = readback_prety ~depth state ty in
+        state, Constp(readback_string ~depth s,ty)
     | App(c,t1,[t2]) when c == appc ->
-        Combp(readback_preterm ~depth t1, readback_preterm ~depth t2)
+        let state, t1 = readback_preterm ~depth state t1 in
+        let state, t2 = readback_preterm ~depth state t2 in
+        state, Combp(t1, t2)
     | App(c,t1,[t2]) when c == lamc ->
-        Absp(readback_preterm ~depth t1, readback_preterm ~depth t2)
+        let state, t1 = readback_preterm ~depth state t1 in
+        let state, t2 = readback_preterm ~depth state t2 in
+        state, Absp(t1, t2)
     | App(c,_,_) when c == typingc ->
         assert false
     | _ -> type_error ("readback_preterm: " ^ E.Pp.Raw.show_term t)
@@ -339,7 +360,7 @@ end = struct
     embed = (fun ~depth _ { E.Data.state = s } ty ->
       s, embed_prety ~depth:0 ty, []);
     readback = (fun ~depth _ { E.Data.state = s } ty ->
-      s, readback_prety ~depth ty);
+      readback_prety ~depth s ty);
   }
 
   let hol_pretype_schema : hol_type data = {
@@ -357,7 +378,7 @@ end = struct
     embed = (fun ~depth _ { E.Data.state = s } t ->
       s, embed_preterm ~depth t, []);
     readback = (fun ~depth _ { E.Data.state = s } t ->
-      s, readback_preterm ~depth t);
+      readback_preterm ~depth s t);
   }
 
 
@@ -542,14 +563,13 @@ end = struct
     debug are_we_debugging;
 
     let exe = Compile.link q in
-    invented_no := (-1);
-    invented_tyvars := [];
+
     match Execute.once exe with
     | Execute.Success sol ->
         let { state = s; assignments = a } as sol = E.Data.of_solution sol in
         let x = E.CustomState.get elab_st s in
         let t = Data.StrMap.find x a in
-        readback_preterm ~depth:0 t
+        snd (readback_preterm ~depth:0 s t)
     | Failure -> failwith "elaboration error"
     | NoMoreSteps -> assert false
   ;;

@@ -131,7 +131,9 @@ self-test :-
 
   print "raw numeral 2 =" {hol.pmk_numeral "2"},
   print "42 =" {hol.term->string {hol.pmk_numeral "42"}},
-  not(hol.pmk_numeral "x" _).
+  not(hol.pmk_numeral "x" _),
+  
+  print {{\x : num. x}} ":" {{: num -> num}}.
 
 % library %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

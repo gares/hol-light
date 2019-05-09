@@ -30,35 +30,59 @@ end = struct
   open E.Utils;;
   open C;;
 
-  let tyvarc = Constants.from_stringc "tyvar";;
-  let tyappc = Constants.from_stringc "tyapp";;
-
-  let mk_tyvar s = mkApp tyvarc (of_string s) [];;
-  let mk_tyapp s l = mkApp tyappc (of_string s) [list_to_lp_list l];; 
-
-  let appc = Constants.from_stringc "app"
-  let varc = Constants.from_stringc "varb"
-  let lamc = Constants.from_stringc "lam"
-  let typingc = Constants.from_stringc "typing"
-  let constc = Constants.from_stringc "const"
-
-  let mk_app t1 t2 = mkApp appc t1 [t2];;
-  let mk_var s ty = mkApp varc (of_string s) [ty];;
-  let mk_lam t1 t2 = mkApp lamc t1 [t2];;
-  let mk_typing t ty = mkApp typingc t [ty];;
-  let mk_const s ty = mkApp constc (of_string s) [ty];;
-
+  (* TODO: move to an utils module *)
   let readback_string ~depth t =
     match look ~depth t with
     | CData c when is_string c -> to_string c
     | _ -> type_error "readback_string"
   ;;
 
-  let rec embed_prety ~depth t =
+(* ============================= data types ============================ *)
+
+(* Each module Hol_datatype.t defines an embed and readback function to be
+   used later on to declare built-in predicates. Morally
+     
+     type 'a data = {
+       embed : 'a -> E.Data.term
+       readback : E.Data.term -> 'a
+     }
+
+   but since it is handy to have extra info in a state, these two functions
+   are also take and return a E.CustomState.t. We use that to store a mapping
+   between Elpi's unification variables and HOL-light Stv, for example.
+   
+*)
+
+(* --------------------------------------------------------------------- *)
+
+  module Hol_pretype : sig
+
+    val t : pretype E.BuiltInPredicate.data
+
+    (* This API is used by Hol_preterm and Hol_type_schema *)
+    module Internal : sig
+      val embed : depth:int -> pretype -> E.Data.term
+      val readback :
+        depth:int -> E.CustomState.t -> E.Data.term -> E.CustomState.t * pretype
+      val mk_app : string -> E.Data.term list -> E.Data.term
+      val appc : E.Data.constant
+      val varc : E.Data.constant
+    end 
+  end = struct module Internal = struct
+
+  (* signature *)
+  let varc = Constants.from_stringc "tyvar";;
+  let appc = Constants.from_stringc "tyapp";;
+
+  (* helpers *)
+  let mk_var s = mkApp varc (of_string s) [];;
+  let mk_app s l = mkApp appc (of_string s) [list_to_lp_list l];; 
+
+  let rec embed ~depth t =
     match t with
-    | Ptycon(s,tl) -> mk_tyapp s (List.map (embed_prety ~depth) tl) 
-    | Utv s -> mk_tyvar s
-    | Stv _ -> assert false
+    | Ptycon(s,tl) -> mk_app s (List.map (embed ~depth) tl) 
+    | Utv s -> mk_var s
+    | Stv _ -> assert false (* Why? *)
   ;;
 
   (* State component mapping elpi unification variables to HOL-light's 
@@ -74,7 +98,7 @@ end = struct
       ~init:(E.CustomState.Other(fun () -> -1, []))
   ;;
 
-  let readback_prety ~depth state t =
+  let readback ~depth state t =
     let state = ref state in
     let new_Stv ?(r=fresh_uvar_body ()) lvl =
       let s, t = E.CustomState.update_return invented_tyvars !state
@@ -90,17 +114,105 @@ end = struct
       with Not_found -> new_Stv ~r lvl in
     let rec aux t =
       match look ~depth t with
-      | App(c, s, [l]) when c == tyappc ->
+      | App(c, s, [l]) when c == appc ->
           Ptycon(readback_string ~depth s,
                  List.map aux (lp_list_to_list ~depth l))
-      | App(c, s, []) when c == tyvarc -> Utv(readback_string ~depth s)
+      | App(c, s, []) when c == varc -> Utv(readback_string ~depth s)
       | Discard -> new_Stv depth
       | (UVar(r,lvl,_) | AppUVar(r,lvl,_)) -> find_Stv r lvl (* NO args? *)
-      | _ -> type_error ("readback_prety: " ^ E.Pp.Raw.show_term t)
+      | _ -> type_error ("Hol_pretype.readback: " ^ E.Pp.Raw.show_term t)
     in
     let t = aux t in
     !state, t
   ;;
+
+  open E.BuiltInPredicate;;
+
+  let t : pretype data = {
+    ty = TyName "ty";
+    doc = "Preterm.pretype";
+    embed = (fun ~depth _ { E.Data.state = s } ty ->
+      s, embed ~depth:0 ty, []);
+    readback = (fun ~depth _ { E.Data.state = s } ty ->
+      readback ~depth s ty);
+  }
+
+  end include Internal end
+
+(* --------------------------------------------------------------------- *)
+  module Hol_preterm : sig
+
+    val t : preterm E.BuiltInPredicate.data
+
+    (* API used to generate the query `elab` *)
+    module Internal : sig
+      val embed : depth:int -> preterm -> E.Data.term
+    end
+
+  end = struct module Internal = struct
+
+  let appc = Constants.from_stringc "app"
+  let varc = Constants.from_stringc "varb"
+  let lamc = Constants.from_stringc "lam"
+  let typingc = Constants.from_stringc "typing"
+  let constc = Constants.from_stringc "const"
+
+  let mk_app t1 t2 = mkApp appc t1 [t2];;
+  let mk_var s ty = mkApp varc (of_string s) [ty];;
+  let mk_lam t1 t2 = mkApp lamc t1 [t2];;
+  let mk_typing t ty = mkApp typingc t [ty];;
+  let mk_const s ty = mkApp constc (of_string s) [ty];;
+
+
+  let rec embed ~depth t =
+    match t with
+    | Varp(s,ty) -> mk_var s (Hol_pretype.Internal.embed ~depth ty)
+    | Constp (s,ty) -> mk_const s (Hol_pretype.Internal.embed ~depth ty)
+    | Combp(t1,t2) -> mk_app (embed ~depth t1) (embed ~depth t2)
+    | Absp(t1,t2) -> mk_lam (embed ~depth t1) (embed ~depth t2)
+    | Typing(t,ty) -> mk_typing (embed ~depth t) (Hol_pretype.Internal.embed ~depth ty)
+  ;;
+
+  let rec readback ~depth state t =
+    match look ~depth t with
+    | App(c,s,[ty]) when c == varc ->
+        let state, ty = Hol_pretype.Internal.readback ~depth state ty in
+        state, Varp(readback_string ~depth s,ty)
+    | App(c,s,[ty]) when c == constc ->
+        let state, ty = Hol_pretype.Internal.readback ~depth state ty in
+        state, Constp(readback_string ~depth s,ty)
+    | App(c,t1,[t2]) when c == appc ->
+        let state, t1 = readback ~depth state t1 in
+        let state, t2 = readback ~depth state t2 in
+        state, Combp(t1, t2)
+    | App(c,t1,[t2]) when c == lamc ->
+        let state, t1 = readback ~depth state t1 in
+        let state, t2 = readback ~depth state t2 in
+        state, Absp(t1, t2)
+    | App(c,_,_) when c == typingc ->
+        assert false
+    | _ -> type_error ("readback_preterm: " ^ E.Pp.Raw.show_term t)
+  ;;
+
+  open E.BuiltInPredicate;;
+
+  let t : preterm data = {
+    ty = TyName "term";
+    doc = "Preterm.preterm";
+    embed = (fun ~depth _ { E.Data.state = s } t ->
+      s, embed ~depth t, []);
+    readback = (fun ~depth _ { E.Data.state = s } t ->
+      readback ~depth s t);
+  }
+
+  end include Internal end
+
+(* --------------------------------------------------------------------- *)
+  module Hol_type_schema : sig
+
+    val t : (hol_type list * hol_type) E.BuiltInPredicate.data
+ 
+  end = struct
 
   let monoc = Constants.from_stringc "mono"
   let allc = Constants.from_stringc "all"
@@ -111,10 +223,10 @@ end = struct
     | _ :: xs -> position ~depth x xs
   ;;
 
-  let embed_prety_schema ~depth (vars, ty) =
+  let embed ~depth vars ty =
     let vars = List.map dest_vartype vars in
     let rec embed_mono = function
-      | Tyapp(s,l) -> mk_tyapp s (List.map embed_mono l)
+      | Tyapp(s,l) -> Hol_pretype.Internal.mk_app s (List.map embed_mono l)
       | Tyvar x -> mkConst (position ~depth x vars)
     in
     let rec embed_all = function
@@ -124,13 +236,13 @@ end = struct
       embed_all (List.rev vars)
   ;;
 
-  let readback_prety_schema ~depth t =
+  let readback ~depth t =
     let rec readback_mono ~depth subst t =
       match look ~depth t with
-      | App(c,s,[args]) when c == tyappc ->
+      | App(c,s,[args]) when c == Hol_pretype.Internal.appc ->
           mk_type (readback_string ~depth s,
                    List.map (readback_mono ~depth subst) (E.Utils.lp_list_to_list ~depth args))
-      | App(c,s,[]) when c == tyvarc -> assert false
+      | App(c,s,[]) when c == Hol_pretype.Internal.varc -> assert false
       | Const i -> List.assoc i subst
       | _ -> type_error ("readback_mono: " ^ E.Pp.Raw.show_term t)
     in
@@ -142,157 +254,30 @@ end = struct
           | Lam t ->
               readback_all ~depth:(depth+1)
                  ( (depth, mk_vartype (string_of_int depth)) :: subst) t
-          | _ -> type_error "readback_prety_schema"
+          | _ -> type_error "readback_all"
           end
-      | _ -> type_error "readback_prety_schema"
+      | _ -> type_error "readback_ty_schema"
     in
       readback_all ~depth [] t
   ;;
 
+  open E.BuiltInPredicate;;
 
-  let rec embed_preterm ~depth t =
-    match t with
-    | Varp(s,ty) -> mk_var s (embed_prety ~depth ty)
-    | Constp (s,ty) -> mk_const s (embed_prety ~depth ty)
-    | Combp(t1,t2) -> mk_app (embed_preterm ~depth t1) (embed_preterm ~depth t2)
-    | Absp(t1,t2) -> mk_lam (embed_preterm ~depth t1) (embed_preterm ~depth t2)
-    | Typing(t,ty) -> mk_typing (embed_preterm ~depth t) (embed_prety ~depth ty)
-  ;;
+  let t = {
+    ty = TyName "tys";
+    doc = "Fusion.Hol.hol_type";
+    embed = (fun ~depth _ { E.Data.state = s } (vars,ty) ->
+      s, embed ~depth:0 vars ty, []);
+    readback = (fun ~depth _ { E.Data.state = s } ty ->
+      let ty = readback ~depth ty in
+      s, (tyvars ty, ty));
+  }
 
-  let rec readback_preterm ~depth state t =
-    match look ~depth t with
-    | App(c,s,[ty]) when c == varc ->
-        let state, ty = readback_prety ~depth state ty in
-        state, Varp(readback_string ~depth s,ty)
-    | App(c,s,[ty]) when c == constc ->
-        let state, ty = readback_prety ~depth state ty in
-        state, Constp(readback_string ~depth s,ty)
-    | App(c,t1,[t2]) when c == appc ->
-        let state, t1 = readback_preterm ~depth state t1 in
-        let state, t2 = readback_preterm ~depth state t2 in
-        state, Combp(t1, t2)
-    | App(c,t1,[t2]) when c == lamc ->
-        let state, t1 = readback_preterm ~depth state t1 in
-        let state, t2 = readback_preterm ~depth state t2 in
-        state, Absp(t1, t2)
-    | App(c,_,_) when c == typingc ->
-        assert false
-    | _ -> type_error ("readback_preterm: " ^ E.Pp.Raw.show_term t)
-  ;;
+  end
 
-(*
+  (* ======================= abstract data types ====================== *)
 
-  let embed_type ~depth (vars,ty) =
-    let rec embedtyexpr ctx = function
-      | Hol.Tyapp(name,args) ->
-          mkApp tyappc (of_string name)
-            [list_to_lp_list (List.map (embedtyexpr ctx) args)]
-      | Tyvar s -> mkConst (position ~depth s ctx)
-    in
-    let rec embedty ctx = function
-      | [] -> mkApp tymonoc (embedtyexpr ctx ty) []
-      | Tyvar v :: vs -> mkApp tyallc (mkLam (embedty (v :: ctx) vs)) [] 
-      | _ -> assert false
-    in 
-      embedty [] vars
-  ;;
-
-  let rec readback_type ~depth t =
-    match look ~depth t with
-    | App(c,hd,args) when c == tyappc ->
-        Hol.mk_type (readback_string ~depth hd,
-                     List.map (readback_type ~depth) args)
-    | _ -> type_error ("readback_type:" ^ E.Pp.Raw.show_term t)
-  ;;
-
-  let embed_term ~depth ctx t =
-    let rec embed ctx = function
-      | Hol.Var(s,_) -> mkConst (position ~depth s ctx)
-      | Const(s,ty) ->
-         mkApp constantc (of_string s) [embed_type ~depth (tyvars ty, ty);mkNil]
-      | Comb(t1,t2) -> mkApp applicationc (embed ctx t1) [embed ctx t2]
-      | Abs(Var(s,ty),bo) ->
-          let ty = embed_type ~depth (tyvars ty, ty) in
-          let bo = embed (s :: ctx) bo in
-          mkApp lambdac (of_string s) [ty; mkLam bo]
-      | _ -> failwith "invalid hol term"
-    in
-      embed ctx t
-  ;;
-
-  let readback_term ~depth hyps { E.Data.state = s } t =
-    let rec readback ~depth ctx t =
-      match look ~depth t with
-      | App(c,hd,[ty;subst]) when c == constantc ->
-          let hd = readback_string ~depth hd in
-          assert false
-(*           let ty = readback_type ~depth ty in *)
-(*           mk_const (hd,ty) *)
-      | App(c,hd,[a]) when c == applicationc ->
-          let hd = readback ~depth ctx hd in
-          let a = readback ~depth ctx a in
-          mk_comb (hd,a)
-      | App(c,n,[ty;bo]) when c == lambdac ->
-          let n = readback_string ~depth n in
-(*           let ty = readback_type ~depth ty in *)
-    let ty = assert false in
-          begin match look ~depth bo with
-          | Lam t ->
-              let v = mk_var (n,ty) in
-              mk_abs (v, readback ~depth:(depth+1) ((depth,v)::ctx) t)
-          | _ -> assert false
-          end
-      | Const i -> (try List.assoc i ctx with Not_found -> assert false)
-      | _ -> assert false
-    in
-      s, readback ~depth [] t
-  ;;
-
-  let embed_pretype ~depth ty =
-    let rec embedty = function
-      | Ptycon("",[]) -> tydummy
-      | Ptycon(name,args) ->
-          mkApp tyappc (of_string name)
-            [list_to_lp_list (List.map embedty args)]
-      | Utv name -> assert false (* TODO *)
-      | Stv _ -> assert false
-    in
-      embedty ty
-  ;;
-
-(*
-  let embed_preterm ~depth t =
-    let rec embed ctx = function
-      | Varp(s,_) when can get_generic_type s ->
-          mkApp constantc (of_string s) [tydummy]
-      | Varp(s,_) when can num_of_string s ->
-          let t = pmk_numeral(num_of_string s) in
-          embed ctx t
-      | Varp(s,_) -> mkConst (position ~depth s ctx) (* make a cast? *)
-      | Constp(s,ty) -> mkApp constantc (of_string s) [embed_pretype ~depth ty;mkNil]
-      | Combp(t1,t2) -> mkApp applicationc (embed ctx t1) [embed ctx t2]
-      | Absp(Varp(s,ty),bo) -> 
-          let ty = embed_pretype ~depth ty in
-          let bo = embed (s :: ctx) bo in
-          mkApp lambdac (of_string s) [ty;mkLam bo]
-      | Typing(t,ty) ->
-          let t = embed ctx t in
-          let ty = embed_pretype ~depth ty in
-          mkApp pcastc t [ty]
-      | _ -> failwith "invalid hol preterm"
-    in
-      embed [] t
-  ;;
-*)
-  let embed_preterm ~depth t =
-    let rec embed = function
-      | Varp(s,_) ->
-      | Combp(t1,t2) ->
-          mkApp 
-      | Absp(t1,t2) ->
-      | Typing(t,ty) ->
-
-  (* Proof evidence, non-structured data (such as string, int, ...) *)
+  (* Proof evidence, Elpi program can only pass this around *)
   let thm_cd = E.CData.declare { E.CData.data_name = "Hol.thm";
     data_pp = (fun f t -> Format.fprintf f "<<proof-of %a >>" pp_print_thm t);
     data_eq = equals_thm;
@@ -301,22 +286,31 @@ end = struct
   }
   ;;
 
-  let () = E.Compile.set_default_quotation (fun ~depth st s ->
-    st, embed_term ~depth [] (parse_term s))
+  let thm : thm E.BuiltInPredicate.data =
+    E.BuiltInPredicate.cdata ~name:"thm" thm_cd
   ;;
 
-  let () = E.Compile.register_named_quotation "" (fun ~depth st s ->
-    let ty = parse_type s in
+  (* ========================== quotations ========================== *)
+
+  (* This problem in the API is to be fixed in elpi *)
+  let hack_elpi_12 f s x =
+    let _, t, l = f { E.Data.assignments = StrMap.empty; state = Obj.magic StrMap.empty; constraints = Obj.magic [] } x in
+    assert(l = []);
+    s, t
+
+  let () = E.Compile.set_default_quotation (fun ~depth st loc txt ->
+    let ast, l = parse_preterm (lex (explode txt)) in
+    if l <> [] then failwith "Unparsed input in quotation";
+    hack_elpi_12 (Hol_preterm.t.embed ~depth []) st ast)
+  ;;
+
+  let () = E.Compile.register_named_quotation "" (fun ~depth st loc txt ->
+    let ty = parse_type txt in
     let vars = tyvars ty in
-    st, embed_type ~depth (vars,ty))
+    hack_elpi_12 (Hol_type_schema.t.embed ~depth []) st (vars,ty))
   ;;
 
-  let () = E.Compile.register_named_quotation "pre" (fun ~depth st s ->
-    let p, l = parse_preterm (lex (explode s)) in
-    if l = [] then st, embed_preterm ~depth p
-    else failwith "Unparsed input")
-  ;;
-
+(*
   let sequentc = E.Data.Constants.from_stringc "sequent"
   ;;
 
@@ -354,33 +348,6 @@ end = struct
   open E.BuiltInPredicate;;
   open Notation;;
 
-  let hol_pretype : pretype data = {
-    ty = TyName "ty";
-    doc = "Preterm.pretype";
-    embed = (fun ~depth _ { E.Data.state = s } ty ->
-      s, embed_prety ~depth:0 ty, []);
-    readback = (fun ~depth _ { E.Data.state = s } ty ->
-      readback_prety ~depth s ty);
-  }
-
-  let hol_pretype_schema : hol_type data = {
-    ty = TyName "tys";
-    doc = "Fusion.Hol.hol_type";
-    embed = (fun ~depth _ { E.Data.state = s } ty ->
-      s, embed_prety_schema ~depth:0 (tyvars ty,ty), []);
-    readback = (fun ~depth _ { E.Data.state = s } ty ->
-      s, readback_prety_schema ~depth ty);
-  }
-
-  let hol_preterm : preterm data = {
-    ty = TyName "term";
-    doc = "Preterm.preterm";
-    embed = (fun ~depth _ { E.Data.state = s } t ->
-      s, embed_preterm ~depth t, []);
-    readback = (fun ~depth _ { E.Data.state = s } t ->
-      readback_preterm ~depth s t);
-  }
-
 
   let declarations = [
     LPDoc "========================== HOL-Light ===========================";
@@ -401,16 +368,17 @@ end = struct
 
     MLCode (Pred("hol.env",
       In(string,"constant name",
-      Out(hol_pretype_schema, "constant type",
+      Out(Hol_type_schema.t, "constant type",
       Easy("lookup the type of known constant"))),
     (fun name _ ~depth:_ ->
-       try !: (get_const_type name)
+       try let ty = get_const_type name in
+         !: (tyvars ty, ty)
        with Failure _ -> raise No_clause)),
     DocNext);
 
     MLCode (Pred("hol.interface",
       In(string,"constant overloaded name",
-      Out(list (Elpi_builtin.pair string hol_pretype), "constant name and type",
+      Out(list (Elpi_builtin.pair string Hol_pretype.t), "constant name and type",
       Easy("lookup the interpretations of overloaded constant"))),
     (fun name _ ~depth ->
        let l = mapfilter (fun (x,(s,t)) ->
@@ -421,7 +389,7 @@ end = struct
 
     MLCode (Pred("hol.pmk_numeral",
       In(string,"possibly a numeral",
-      Out(hol_preterm,"the number",
+      Out(Hol_preterm.t,"the number",
       Easy "when the given string is a numeral it outputs its preterm")),
     (fun str _ ~depth ->
        if can num_of_string str then !: (pmk_numeral (num_of_string str))
@@ -431,7 +399,7 @@ end = struct
     LPDoc "-------------------- printing -----------------------------";
 
     MLCode (Pred("hol.term->string",
-      In(hol_preterm,"T",
+      In(Hol_preterm.t,"T",
       Out(string,"S",
       Easy "typechecks T and prints it to S")),
     (fun t _ ~depth ->
@@ -441,7 +409,7 @@ end = struct
     DocAbove);
 
     MLCode (Pred("hol.ty->string",
-      In(hol_pretype,"Ty",
+      In(Hol_pretype.t,"Ty",
       Out(string,"S",
       Easy "typechecks Ty and prints it to S")),
     (fun t _ ~depth ->
@@ -451,12 +419,12 @@ end = struct
     DocAbove);
 
     MLCode (Pred("hol.tys->string",
-      In(hol_pretype_schema,"Tys",
+      In(Hol_type_schema.t,"Tys",
       Out(string,"S",
       Easy "typechecks Tys and prints it to S")),
     (fun t _ ~depth ->
        try
-         !: (string_of_type t)
+         !: (string_of_type (snd t))
        with Failure _ -> !: "(illtyped)")),
     DocAbove);
 
@@ -550,7 +518,7 @@ end = struct
   (* This runs the elpi query requesting the elaboration of a given term *)
   let elaborate p =
     let q = E.Compile.query (hol ()) (fun ~depth st ->
-      let t = embed_preterm ~depth p in
+      let t = Hol_preterm.Internal.embed ~depth p in
       let st, n, x = E.Compile.fresh_Arg st ~name_hint:"E" ~args:[] in
       let st = E.Compile.State.set elab_cc st n in
       st, (Ast.Loc.initial "(quotation)",mkApp elabc t [x])) in
@@ -569,7 +537,7 @@ end = struct
         let { state = s; assignments = a } as sol = E.Data.of_solution sol in
         let x = E.CustomState.get elab_st s in
         let t = Data.StrMap.find x a in
-        snd (readback_preterm ~depth:0 s t)
+        snd (Hol_preterm.t.readback ~depth:0 [] sol t)
     | Failure -> failwith "elaboration error"
     | NoMoreSteps -> assert false
   ;;

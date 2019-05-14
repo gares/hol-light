@@ -27,26 +27,30 @@ pred of i:term, o:ty, o:term.
 
 macro @dummy :- tyapp "" [].
 
-of (varb S _) T (const S1 T) :-
-  hol.interface S [],
-  hol.env S T1, refresh-tys T1 T, S = S1.
-  % HACK (fixme in elpi): 
-  % to avoid a complex round trip
-  % UVar -> Stv -> UVar 
+% variable dispatching
 
-of (varb S _) T (const S1 T) :-
+of (varb V _) T  R :- hol.pmk_numeral V N, !,
+  of N T R.
+
+of (varb V _) T R :- (hol.interface V [_|_] ; hol.env V _), !,
+  of (const V @dummy) T R.
+  
+of (varb S @dummy) T (varb S T) :- !.
+
+% constants: 
+of (const S _) T (const S T) :- hol.interface S [],
+  hol.env S T1, refresh-tys T1 T.
+
+of (const S _) T (const S1 T) :-
   hol.interface S L,
   std.mem L (pr S1 T).
-
-
-of (varb S @dummy) T (varb S T).
 
 of (lam V B) (tyapp "fun" [Src,Tgt]) (lam (varb S Src) B1) :-
   of V Src (varb S Src),
   (of (varb S _) Src (varb S Src) :- !) =>
     of B Tgt B1.
 
-of (typing T TY) TY T1 :- of T TY T1.
+of (typing T TY) TY T1 :- !, of T TY T1.
 
 of (app H A) Tgt (app H1 A1) :-
   of H (tyapp "fun" [Src,Tgt]) H1,
@@ -57,17 +61,16 @@ of T (tyapp "real" []) T3 :-
   T2 = app (varb "real_of_num" @dummy) T1,
   of T2 (tyapp "real" []) T3.
 
-pred err. % avoid looping
+pred err. 
 
-% of T ETY _ :- not (err),
-%   ((err => of T TY _) ; TY = tyapp "no-type" []),
-%   Msg is {pp T} ^ " is :" ^ {ppt TY} ^
-%                   " but must be :" ^ {ppt ETY},
-%   halt Msg.
-
+of T ETY R :- not (err),
+  ((err => of T TY T1) ; TY = tyapp "no_type" []),
+  R = app (const "type_error" (tyapp "fun" [TY,ETY])) T1.
+      
 pred refresh i:ty, o:ty.
 refresh TY TY1 :- std.spy(variables TY [] V), std.spy(mk-subst-ty V S), S => copy-ty TY TY1.
 
+pred variables i:ty, i:list ty, o:list ty.
 variables (tyvar _ as X) L L :- std.mem L X, !.
 variables (tyvar _ as X) L [X|L].
 variables (tyapp _ []) L L. 
@@ -117,23 +120,35 @@ elab X Y :- of X T Y, print "elab" X " -> " Y ":" T.
 pred self-test.
 
 self-test :-
+  print "test1",
   print {hol.term->string (lam (varb "x" _) (varb "x" _))},
 
+  print "test2",
   print {hol.ty->string (tyapp "num" [])},
   
+  print "test3",
   hol.interface "+" L,
   std.map L (map-pr (=) hol.ty->string) L1,
   print "interface + = " L1,
   hol.interface "whatever" [],
   
+  print "test4",
   print "int_min : " {hol.tys->string {hol.env "int_min"}},
   not (hol.env "whatever" _),
 
+  print "test5",
   print "raw numeral 2 =" {hol.pmk_numeral "2"},
   print "42 =" {hol.term->string {hol.pmk_numeral "42"}},
   not(hol.pmk_numeral "x" _),
   
-  print {{\x : num. x}} ":" {{: num -> num}}.
+  print "test6",
+  print {{\x : num. x}} ":" {{: num -> num}},
+  
+  print "test7",
+  of {{ 0 : real }} _ R, print {hol.term->string R},
+  
+  print "test8",
+  of {{ [] : real}} _ F, print {hol.term->string F}.
 
 % library %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

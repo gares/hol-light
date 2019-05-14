@@ -571,6 +571,11 @@ any->string X Y :- term_to_string X Y.
 
 % ========================== HOL-Light ===========================
 
+% HOL-light tactics
+kind tactic type.
+type arith term -> tactic.
+type refl term -> tactic.
+
 % -------------------- environment -----------------------------
 
 external pred hol.env % lookup the type of known constant

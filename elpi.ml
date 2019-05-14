@@ -341,6 +341,28 @@ end = struct
     st, t)
   ;;
 
+module Tactics = struct
+type tactics =
+  | Arith of preterm
+  | Refl of preterm
+
+let tactics_adt = {
+  E.BuiltInPredicate.ADT.ty = TyName "tactic";
+  doc = "HOL-light tactics";
+  constructors = [
+    K("arith","",A(Hol_preterm.t,N),
+      (fun t -> Arith t),
+      (fun ~ok ~ko -> function Arith t -> ok t | _ -> ko));
+    K("refl","",A(Hol_preterm.t,N),
+      (fun t -> Arith t),
+      (fun ~ok ~ko -> function Arith t -> ok t | _ -> ko)); 
+
+  ]
+}
+let t = E.BuiltInPredicate.adt tactics_adt
+end
+
+
 (*
   let sequentc = E.Data.Constants.from_stringc "sequent"
   ;;
@@ -419,6 +441,8 @@ let elpi_string_of_preterm =
     DocNext);
 
 *)
+
+    MLADT Tactics.tactics_adt;
 
     LPDoc "-------------------- environment -----------------------------";
 

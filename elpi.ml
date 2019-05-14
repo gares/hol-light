@@ -374,11 +374,36 @@ end = struct
   ;;
   *)
 
+(* TODO: jsut defined unsafe_mk_comb and use everywhere below *)
+let unsafe_cast tm ty =
+  let pty = type_of tm in
+  if pty = ty then tm else
+  mk_comb(mk_mconst("unsafe_cast",mk_fun_ty pty ty),tm)
+  ;;
+
+let elpi_string_of_preterm =
+    let rec untyped_t_of_pt = function
+      |Varp(s,pty) -> mk_var(s,type_of_pretype pty)
+      |Constp(s,pty) -> mk_mconst(s,type_of_pretype pty)
+      |Combp(l,r) ->
+         let l' = untyped_t_of_pt l in
+         let r' = untyped_t_of_pt r in
+         begin try mk_comb(l',r') with
+           Failure _ ->
+             let f = type_of l' in
+             let pty = fst (dest_fun_ty f) in
+             mk_comb(l',unsafe_cast r' pty)            
+          end
+      |Absp(v,bod) -> mk_gabs(untyped_t_of_pt v,untyped_t_of_pt bod)
+      |Typing(ptm,pty) -> untyped_t_of_pt ptm
+    in
+    string_of_term o untyped_t_of_pt
+  ;;
+
   module Builtins = struct
 
   open E.BuiltInPredicate;;
   open Notation;;
-
 
   let declarations = [
     LPDoc "========================== HOL-Light ===========================";
@@ -406,6 +431,11 @@ end = struct
          !: (tyvars ty, ty)
        with Failure _ -> raise No_clause)),
     DocNext);
+
+    (* TODO:
+        - export the_overloaded_skeleton (NO! serve per evitare backtracking)
+        - get_var_type (poco usato, per studenti?) *)
+
 
     MLCode (Pred("hol.interface",
       In(string,"constant overloaded name",
@@ -435,8 +465,8 @@ end = struct
       Easy "typechecks T and prints it to S")),
     (fun t _ ~depth ->
        try
-         !: (string_of_term (term_of_preterm t))
-       with Failure _ -> !: "(illtyped)")),
+         !: (elpi_string_of_preterm t)
+       with Failure s -> !: ("(illtyped)"^s))),
     DocAbove);
 
     MLCode (Pred("hol.ty->string",
@@ -570,6 +600,11 @@ end = struct
   set_jrh_lexer;;
 
 end
+
+(* axiom for type error *)
+new_constant ("unsafe_cast", `:A -> B`);;
+new_constant ("type_error", `:A -> B`);;
+
 
 (* little test *)
 let () = Elpi.query (Elpi.hol ()) "self-test";;

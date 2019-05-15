@@ -353,31 +353,27 @@ module Coercion = struct
 
   type coercion = {
     name : string;
-    src_type : hol_type list * hol_type;
-    trg_type : hol_type list * hol_type;
-    the_constant : preterm
+    type_sch : hol_type list * hol_type;
+    constant : preterm
   }
 
   let coercion_adt = {
-    E.BuiltInPredicate.ADT.ty = TyName "tactic";
+    E.BuiltInPredicate.ADT.ty = TyName "coercion";
     doc = "HOL-light coercion";
     constructors = [
       K("coercion",
         "",
         (A(E.BuiltInPredicate.string,
 	 A(Hol_type_schema.t,
-         A(Hol_type_schema.t,
          A(Hol_preterm.t,
-	 N))))),
-        (fun s ty1 ty2 ctm ->
+	 N)))),
+        (fun s ty ctm ->
 	   { name = s;
-	     src_type = ty1;
-	     trg_type = ty2;
-	     the_constant = ctm
+	     type_sch = ty;
+	     constant = ctm
 	   }),
         (fun ~ok ~ko ->
-           function { name = s; src_type = ty1; trg_type = ty2; the_constant = ctm } ->
-             ok s ty1 ty2 ctm))
+           function { name = s; type_sch = ty; constant = ctm } -> ok s ty ctm))
     ]
   }
 
@@ -520,13 +516,12 @@ let elpi_string_of_preterm = string_of_term o unsafe_term_of_preterm;;
 
     MLCode (Pred("hol.coercions",
       Out(list Coercion.t, "coercions",
-        Easy("lookup the interpretations of overloaded constant")),
+        Easy("TODO commento")),
       (fun _ ~depth ->
-         let l = map (fun (s,(ty1,ty2,ctm)) ->
+         let l = map (fun (s,(ty,ctm)) ->
                         { Coercion.name = s;
-			  src_type = (tyvars ty1,ty1);
-                          trg_type = (tyvars ty2,ty2);
-                          the_constant = preterm_of_term ctm
+			  type_sch = (tyvars ty,ty);
+                          constant = preterm_of_term ctm
                         })
                      !the_coercions in
          !: l)),
@@ -654,7 +649,8 @@ let elpi_string_of_preterm = string_of_term o unsafe_term_of_preterm;;
     let q = Parse.goal (Ast.Loc.initial "(query)") s in
     let q = Compile.query p q in
     let exe = Compile.link q in
-    let _ = Compile.static_check header q in
+    let check_ok = Compile.static_check header q in
+    assert check_ok;
     match Execute.once ?max_steps exe with
     | Execute.Success { assignments = assignments } ->
         if not (Data.StrMap.is_empty assignments) then
@@ -680,7 +676,8 @@ let elpi_string_of_preterm = string_of_term o unsafe_term_of_preterm;;
        is an elpi program too) *)
     let are_we_debugging = !debugging in
     Setup.trace [];
-    let _ = Compile.static_check header q in
+    let check_ok = Compile.static_check header q in
+    assert check_ok;
     debug are_we_debugging;
 
     let exe = Compile.link q in
@@ -717,7 +714,8 @@ let elpi_string_of_preterm = string_of_term o unsafe_term_of_preterm;;
        is an elpi program too) *)
     let are_we_debugging = !debugging in
     Setup.trace [];
-    let _ = Compile.static_check header q in
+    let check_ok = Compile.static_check header q in
+    assert check_ok;
     debug are_we_debugging;
 
     let exe = Compile.link q in

@@ -8,15 +8,15 @@
 
 let hide_coercions : bool ref = ref true;;
 
-let the_coercions : (string * (hol_type * hol_type * term)) list ref =
+let the_coercions : (string * (hol_type * term)) list ref =
   ref [];;
 
 let add_coercion tm =
   if not(is_const(tm)) then failwith "add_coercion: Not a constant" else
   let s,ty = dest_const tm in
-  try let ty1,ty2 = dest_fun_ty ty in
-      the_coercions := (s,(ty1,ty2,tm)) :: !the_coercions
-  with Failure _ -> failwith "add_coercion: not a function";;
+  if not(can dest_fun_ty ty)
+  then failwith "add_coercion: not a function"
+  else the_coercions := (s,(ty,tm)) :: !the_coercions;;
 
 let find_coercion s = assoc s !the_coercions;;
 

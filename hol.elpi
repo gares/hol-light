@@ -47,7 +47,7 @@ of (const S _) T (const S1 T) :-
 
 of (lam V B) (tyapp "fun" [Src,Tgt]) (lam (varb S Src) B1) :-
   of V Src (varb S Src),
-  (of (varb S _) Src (varb S Src) :- !) =>
+  (pi U Src1 \ of (varb S _) Src1 U :- !, U = varb S Src, Src = Src1) =>
     of B Tgt B1.
 
 of (typing T TY) TY T1 :- !, of T TY T1.
@@ -57,18 +57,24 @@ of (app H A) Tgt (app H1 A1) :-
   of A Src A1,
   Tgt = Tgt1.
 
-of T (tyapp "real" []) T3 :-
-  of T (tyapp "num" []) T1,
-  T2 = app (varb "real_of_num" @dummy) T1,
-  of T2 (tyapp "real" []) T3.
+pred of-loop. 
+
+of PTM TY TM :- not (var TY), not of-loop,
+  hol.coercions Coercions,
+  of-loop => of PTM TY1 TM1,
+  mem Coercions (coercion _ TS CTM),
+  std.spy(refresh-tys TS (tyapp "fun" [TY1, TY])),
+  TM = app CTM TM1.
+	
+pred mem i:list A, o:A.
+mem [X|_] X.
+mem [_|Xs] X :- mem Xs X.
 
 /*
 of T (tyapp "fun" [Src, tyapp "real" []]) T3 :-
   of T (tyapp "fun" [Src, tyapp "num" []]) T1,
   T2 = app (app (varb "o" @dummy) (varb "real_of_num" @dummy)) T1,
   of T2 (tyapp "fun" [Src, tyapp "real" []]) T3.
-
-pred err. 
 
 of T ETY R :- not (err),
   ((err => of T TY T1) ; TY = tyapp "no_type" []),
@@ -143,24 +149,24 @@ self-test :-
   print "int_min : " {hol.tys->string {hol.env "int_min"}},
   not (hol.env "whatever" _),
 
-  print "test5",
+  print "test5",!,
   print "raw numeral 2 =" {hol.pmk_numeral "2"},
   print "42 =" {hol.term->string {hol.pmk_numeral "42"}},
   not(hol.pmk_numeral "x" _),
   
-  print "test6",
+  print "test6",!,
   print {{\x : num. x}} ":" {{: num -> num}},
   
   print "test7",
   of {{ 0 : real }} _ R, print {hol.term->string R},
   
-  %print "test8",
+  %print "test8",!,
   %of {{ [] : real}} _ F, print {hol.term->string F},
   
-  print "test9",
+  print "test9",!,
   hol.rule.refl {of {{0}} _} Thm, print Thm,
 
-  print "test10",
+  print "test10",!,
   hol.coercions Cs, print Cs.
 
 % library %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

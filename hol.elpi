@@ -35,7 +35,7 @@ of (varb V _) T  R :- hol.pmk_numeral V N, !,
 of (varb V _) T R :- (hol.interface V [_|_] ; hol.env V _), !,
   of (const V @dummy) T R.
   
-of (varb S @dummy) T (varb S T) :- !.
+of (varb S @dummy) Ty (varb S Ty) :- free? S (varb _ Ty).
 
 % constants: 
 of (const S _) T (const S T) :- hol.interface S [],
@@ -43,7 +43,7 @@ of (const S _) T (const S T) :- hol.interface S [],
 
 of (const S _) T (const S1 T) :-
   hol.interface S L,
-  std.mem L (pr S1 T).
+  mem L (pr S1 T).
 
 of (lam V B) (tyapp "fun" [Src,Tgt]) (lam (varb S Src) B1) :-
   of V Src (varb S Src),
@@ -63,7 +63,7 @@ of PTM TY TM :- not (var TY), not of-loop,
   hol.coercions Coercions,
   of-loop => of PTM TY1 TM1,
   mem Coercions (coercion _ TS CTM),
-  std.spy(refresh-tys TS (tyapp "fun" [TY1, TY])),
+  refresh-tys TS (tyapp "fun" [TY1, TY]),
   TM = app CTM TM1.
 	
 pred mem i:list A, o:A.
@@ -128,7 +128,27 @@ ppt-list [X|XS] S :- S is " " ^ {ppt X} ^ {ppt-list XS}.
 
 pred elab i:term, o:term.
 
-elab X Y :- of X T Y, print "elab" X " -> " Y ":" T.
+pred free-vars o:list term.
+
+pred free? i:string, o:term.
+
+free? S T :-
+  free-vars L,
+  (of-loop, C = "coercing" ; C = "normal elaboration"),
+  print "looking for" S "as a free variable in" L " while" C,
+  find-or-add L S T,
+  print "resulting env is" L
+  .
+
+pred find-or-add i:list term, i:string, o:term.
+
+find-or-add [varb S T|_] S R :- !, R = (varb S T).
+find-or-add [_|L] S R :- find-or-add L S R.
+find-or-add (uvar as L) S (varb S T) :- L = [(varb S T)|FRESH_].
+
+elab X Y :-
+  free-vars L => of X T Y,
+  print "elab" X "->\n" L "|-" Y ":" T.
 
 pred self-test.
 
@@ -198,8 +218,6 @@ pred prove i:term, o:@thm.
 prove (app _ X) Thm :- hol.rule.refl X Thm.
 
 pred step i:goal, o:list goal, o:justification.
-
-step (app (app ()))
 
 step G GL J :-
   hol.tac.ap_term_tac G [SG] J1,

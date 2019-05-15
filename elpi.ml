@@ -26,8 +26,8 @@ module Elpi : sig
 
   (* Tactic *)
   val prove_tac : tactic
-        
-end = struct 
+
+end = struct
 
   unset_jrh_lexer;;
 
@@ -349,6 +349,42 @@ end = struct
   ;;
 
 
+module Coercion = struct
+
+  type coercion = {
+    name : string;
+    src_type : hol_type list * hol_type;
+    trg_type : hol_type list * hol_type;
+    the_constant : preterm
+  }
+
+  let coercion_adt = {
+    E.BuiltInPredicate.ADT.ty = TyName "tactic";
+    doc = "HOL-light coercion";
+    constructors = [
+      K("coercion",
+        "",
+        (A(E.BuiltInPredicate.string,
+	 A(Hol_type_schema.t,
+         A(Hol_type_schema.t,
+         A(Hol_preterm.t,
+	 N))))),
+        (fun s ty1 ty2 ctm ->
+	   { name = s;
+	     src_type = ty1;
+	     trg_type = ty2;
+	     the_constant = ctm
+	   }),
+        (fun ~ok ~ko ->
+           function { name = s; src_type = ty1; trg_type = ty2; the_constant = ctm } ->
+             ok s ty1 ty2 ctm))
+    ]
+  }
+
+  let t = E.BuiltInPredicate.adt coercion_adt
+
+end
+
 module Thm = struct
   let thm = E.CData.declare {
       data_name = "Hol.thm";
@@ -377,7 +413,7 @@ let tactics_adt = {
       (fun ~ok ~ko -> function Arith t -> ok t | _ -> ko));
     K("refl","",A(Hol_preterm.t,N),
       (fun t -> Arith t),
-      (fun ~ok ~ko -> function Arith t -> ok t | _ -> ko)); 
+      (fun ~ok ~ko -> function Arith t -> ok t | _ -> ko));
 
   ]
 }
@@ -480,6 +516,22 @@ let elpi_string_of_preterm = string_of_term o unsafe_term_of_preterm;;
        else raise No_clause)),
     DocNext);
 
+    MLADT Coercion.coercion_adt;
+
+    MLCode (Pred("hol.coercions",
+      Out(list Coercion.t, "coercions",
+        Easy("lookup the interpretations of overloaded constant")),
+      (fun _ ~depth ->
+         let l = map (fun (s,(ty1,ty2,ctm)) ->
+                        { Coercion.name = s;
+			  src_type = (tyvars ty1,ty1);
+                          trg_type = (tyvars ty2,ty2);
+                          the_constant = preterm_of_term ctm
+                        })
+                     !the_coercions in
+         !: l)),
+      DocNext);
+
     LPDoc "-------------------- printing -----------------------------";
 
     MLCode (Pred("hol.term->string",
@@ -541,7 +593,6 @@ let elpi_string_of_preterm = string_of_term o unsafe_term_of_preterm;;
 *)
 
     MLADT Tactics.tactics_adt;
-
 
 
   ]
@@ -683,9 +734,6 @@ let elpi_string_of_preterm = string_of_term o unsafe_term_of_preterm;;
   let prove_tac = CONV_TAC prove
 
 end
-
-(* axiom for type error *)
-new_constant ("type_error", `:A -> B`);;
 
 
 (* little test *)

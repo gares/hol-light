@@ -586,6 +586,13 @@ external pred hol.pmk_numeral % when the given string is a numeral it outputs it
   i:string, % possibly a numeral
   o:term.   % the number
   
+% HOL-light coercion
+kind tactic type.
+type coercion string -> tys -> tys -> term -> tactic.
+
+external pred hol.coercions % lookup the interpretations of overloaded constant
+  o:list tactic. % coercions
+  
 % -------------------- printing -----------------------------
 
 % [hol.term->string T S] typechecks T and prints it to S

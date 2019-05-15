@@ -154,11 +154,14 @@ self-test :-
   print "test7",
   of {{ 0 : real }} _ R, print {hol.term->string R},
   
-  print "test8",
-  of {{ [] : real}} _ F, print {hol.term->string F},
+  %print "test8",
+  %of {{ [] : real}} _ F, print {hol.term->string F},
   
   print "test9",
-  hol.rule.refl {of {{0}} _} Thm, print Thm.
+  hol.rule.refl {of {{0}} _} Thm, print Thm,
+
+  print "test10",
+  hol.coercions Cs, print Cs.
 
 % library %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

@@ -53,20 +53,27 @@ of (lam V B) (tyapp "fun" [Src,Tgt]) (lam (varb S Src) B1) :-
 of (typing T TY) TY T1 :- !, of T TY T1.
 
 of (app H A) Tgt (app H1 A1) :-
-  of H (tyapp "fun" [Src,Tgt]) H1,
-  of A Src A1.
+  of H (tyapp "fun" [Src,Tgt1]) H1,
+  of A Src A1,
+  Tgt = Tgt1.
 
 of T (tyapp "real" []) T3 :-
   of T (tyapp "num" []) T1,
   T2 = app (varb "real_of_num" @dummy) T1,
   of T2 (tyapp "real" []) T3.
 
+/*
+of T (tyapp "fun" [Src, tyapp "real" []]) T3 :-
+  of T (tyapp "fun" [Src, tyapp "num" []]) T1,
+  T2 = app (app (varb "o" @dummy) (varb "real_of_num" @dummy)) T1,
+  of T2 (tyapp "fun" [Src, tyapp "real" []]) T3.
+
 pred err. 
 
 of T ETY R :- not (err),
   ((err => of T TY T1) ; TY = tyapp "no_type" []),
   R = app (const "type_error" (tyapp "fun" [TY,ETY])) T1.
-      
+*/      
 pred refresh i:ty, o:ty.
 refresh TY TY1 :- std.spy(variables TY [] V), std.spy(mk-subst-ty V S), S => copy-ty TY TY1.
 

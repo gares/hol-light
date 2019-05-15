@@ -436,14 +436,13 @@ let unsafe_mk_comb (tm1,tm2) =
 
 let unsafe_term_of_preterm =
   let xty = mk_vartype "??" in
-  let rec recur = function
-    | Varp(s,pty) | Constp(s,pty) -> mk_var(s,xty)
+  let rec unsafe ptm =
+    try term_of_preterm ptm with Failure _ ->
+    match ptm with
+      Varp(s,pty) | Constp(s,pty) -> mk_var(s,xty)
     | Combp(l,r) -> unsafe_mk_comb(unsafe l,unsafe r)
     | Absp(v,bod) -> mk_gabs(unsafe v,unsafe bod)
-    | Typing(ptm,pty) -> unsafe ptm
-  and unsafe tm =
-    try term_of_preterm (retypecheck [] tm)
-    with Failure _ -> recur tm in
+    | Typing(ptm,pty) -> unsafe ptm in
   unsafe;;
 
 let elpi_string_of_preterm = string_of_term o unsafe_term_of_preterm;;

@@ -676,8 +676,9 @@ let elpi_string_of_preterm = string_of_term o unsafe_term_of_preterm;;
   let () = Quotation.add "elp" (Quotation.ExStr (fun _ s ->
     "Elpi.quotation \""^String.escaped s^"\""));;
 
-  let provec = E.Data.Constants.from_stringc "prove" ;;
 
+  (* Using an elpi predicate as a rule/tactic *)
+  let provec = E.Data.Constants.from_stringc "prove";;
 
   let prove concl =
     let q = E.Compile.query (hol ()) (fun ~depth st ->

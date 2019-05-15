@@ -630,7 +630,7 @@ kind justification type.
 type jml @just -> justification.
 type japp justification -> justification -> justification.
 type jproved @thm -> justification.
-type jstop goal -> justification.
+type jstop justification.
 
 % [hol.tac.ap_term_tac G GS J] congruence
 external pred hol.tac.ap_term_tac i:goal, o:list goal, o:justification.

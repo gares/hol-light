@@ -148,7 +148,10 @@ self-test :-
   of {{ 0 : real }} _ R, print {hol.term->string R},
   
   print "test8",
-  of {{ [] : real}} _ F, print {hol.term->string F}.
+  of {{ [] : real}} _ F, print {hol.term->string F},
+  
+  print "test9",
+  hol.rule.refl {of {{0}} _} Thm, print Thm.
 
 % library %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -174,6 +177,9 @@ pred copy-ty-list i:list ty, o:list ty.
 copy-ty-list [] [].
 copy-ty-list [T|TS] [T1|TS1] :- copy-ty T T1, copy-ty-list TS TS1.
 
+pred prove i:term, o:@thm.
+
+prove (app _ X) Thm :- hol.rule.refl X Thm.
 
 /*
 prove [p X (d X) |..] [not(p X) (d Y)|..] (r X=Y) :-...
@@ -202,6 +208,9 @@ prove (sequent [ {{ lp:P /\ lp:Q }} | G ] R (conj_l J) :-
     
 prove (sequent G P J) :- subset (symbols G P) ["+" 
 
+prove (refl X) {{ lp:X = lp:X }}.
+
+prove P {{ 0 = 0 }}.
 
 
 ? prove (sequent `X = 4`)  

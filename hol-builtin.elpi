@@ -571,11 +571,6 @@ any->string X Y :- term_to_string X Y.
 
 % ========================== HOL-Light ===========================
 
-% HOL-light tactics
-kind tactic type.
-type arith term -> tactic.
-type refl term -> tactic.
-
 % -------------------- environment -----------------------------
 
 external pred hol.env % lookup the type of known constant
@@ -601,6 +596,19 @@ external pred hol.ty->string i:ty, o:string.
 
 % [hol.tys->string Tys S] typechecks Tys and prints it to S
 external pred hol.tys->string i:tys, o:string.
+
+% -------------------- kernel rules ----------------------------
+
+% HOL proof evidence
+macro @thm :- ctype "Hol.thm".
+
+% [hol.rule.refl X P] P is a proof of X = X
+external pred hol.rule.refl i:term, o:@thm.
+
+% HOL-light tactics
+kind tactic type.
+type arith term -> tactic.
+type refl term -> tactic.
 
 
 

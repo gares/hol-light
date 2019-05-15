@@ -18,9 +18,15 @@ module Elpi : sig
   val debug : debug -> unit
 
   (* The ``quotation`` calling Elpi's elab predicate *)
-  val quotation : string -> preterm
+  val quotation : string -> term
 
-end = struct
+  (* Rule *)
+  val prove : term -> thm
+
+  (* Tactic *)
+  val prove_tac : tactic
+        
+end = struct 
 
   unset_jrh_lexer;;
 
@@ -341,6 +347,21 @@ end = struct
     st, t)
   ;;
 
+
+module Thm = struct
+  let thm = E.CData.declare {
+      data_name = "Hol.thm";
+      data_pp = (fun fmt t ->
+        let hyp, concl = Hol.dest_thm t in
+        Format.fprintf fmt "<thm: TODO |- %s >" (string_of_term concl));
+      data_eq = (fun t1 t2 -> t1 == t2);
+      data_hash = (fun t -> Hashtbl.hash t);
+      data_hconsed = false;
+ }
+ let t = E.BuiltInPredicate.cdata ~name:"thm" ~doc:"HOL proof evidence" thm
+
+end
+
 module Tactics = struct
 type tactics =
   | Arith of preterm
@@ -360,6 +381,7 @@ let tactics_adt = {
   ]
 }
 let t = E.BuiltInPredicate.adt tactics_adt
+
 end
 
 
@@ -378,6 +400,8 @@ end
 
   match look ~depth p with
   | App(c,t,[]) when c == arithc -> ARITH_RULE (readback_term t)
+
+
 
   let readback_thm ~depth hyps { E.Data.state = s } t =
     match look ~depth t with
@@ -443,8 +467,6 @@ let elpi_string_of_preterm = string_of_term o unsafe_term_of_preterm;;
     DocNext);
 
 *)
-
-    MLADT Tactics.tactics_adt;
 
     LPDoc "-------------------- environment -----------------------------";
 
@@ -515,6 +537,36 @@ let elpi_string_of_preterm = string_of_term o unsafe_term_of_preterm;;
        with Failure _ -> !: "(illtyped)")),
     DocAbove);
 
+    LPDoc "-------------------- kernel rules ----------------------------";
+
+    MLCData (Thm.t, Thm.thm);
+
+    MLCode (Pred("hol.rule.refl",
+      In(Hol_preterm.t,"X",
+      Out(Thm.t,"P",
+      Easy "P is a proof of X = X")),
+    (fun x _ ~depth:_ ->
+      set_jrh_lexer;
+      let rc = Hol.REFL (term_of_preterm x) in
+      unset_jrh_lexer;
+      !: rc
+      )),
+    DocAbove);
+
+(*
+      val TRANS : thm -> thm -> thm
+      val MK_COMB : thm * thm -> thm
+      val ABS : term -> thm -> thm
+      val BETA : term -> thm
+      val ASSUME : term -> thm
+      val EQ_MP : thm -> thm -> thm
+      val DEDUCT_ANTISYM_RULE : thm -> thm -> thm
+      val INST_TYPE : (hol_type * hol_type) list -> thm -> thm
+      val INST : (term * term) list -> thm -> thm
+*)
+
+    MLADT Tactics.tactics_adt;
+
 
 
   ]
@@ -579,6 +631,7 @@ let elpi_string_of_preterm = string_of_term o unsafe_term_of_preterm;;
     let _ = Compile.static_check header q in
     match Execute.once ?max_steps exe with
     | Execute.Success { assignments = assignments } ->
+        if not (Data.StrMap.is_empty assignments) then
         Format.printf "Assignments: %a\n"
           (Data.StrMap.pp Pp.term) assignments
     | Failure ->
@@ -623,7 +676,35 @@ let elpi_string_of_preterm = string_of_term o unsafe_term_of_preterm;;
   let () = Quotation.add "elp" (Quotation.ExStr (fun _ s ->
     "Elpi.quotation \""^String.escaped s^"\""));;
 
+  let provec = E.Data.Constants.from_stringc "prove" ;;
+
+
+  let prove concl =
+    let q = E.Compile.query (hol ()) (fun ~depth st ->
+      let concl = preterm_of_term concl in
+      let st, concl, _ = Hol_preterm.t.E.BuiltInPredicate.embed ~depth [] E.Data.no_constraints st concl in
+      let st, p = E.Compile.mk_Arg st ~name:"P" ~args:[] in
+      st, (Ast.Loc.initial "(prove)",mkApp provec concl [p])) in
+
+    (* We disable traces when we typecheck the elpi code (Elpi's type checker
+       is an elpi program too) *)
+    let are_we_debugging = !debugging in
+    Setup.trace [];
+    let _ = Compile.static_check header q in
+    debug are_we_debugging;
+
+    let exe = Compile.link q in
+    match Execute.once exe with
+    | Execute.Success { Elpi_API.Data.assignments = a; constraints = c; state = s} ->
+        let p = Data.StrMap.find "P" a in
+        snd(Thm.t.readback ~depth:0 [] c s (E.Data.of_term p))
+    | Failure -> failwith "prover fails"
+    | NoMoreSteps -> assert false
+  ;;
+
   set_jrh_lexer;;
+
+  let prove_tac = CONV_TAC prove
 
 end
 
@@ -634,3 +715,5 @@ new_constant ("type_error", `:A -> B`);;
 
 (* little test *)
 let () = Elpi.query (Elpi.hol ()) "self-test";;
+
+let _ : thm = prove (`0 = 0`, Elpi.prove_tac)

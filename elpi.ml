@@ -609,7 +609,7 @@ let elpi_string_of_preterm = string_of_term o unsafe_term_of_preterm;;
     match Execute.once exe with
     | Execute.Success { Elpi_API.Data.assignments = a; constraints = c; state = s} ->
         let t = Data.StrMap.find "E" a in
-        snd (Hol_preterm.t.readback ~depth:0 [] c s (E.Data.of_term t))
+        term_of_preterm (snd (Hol_preterm.t.readback ~depth:0 [] c s (E.Data.of_term t)))
     | Failure -> failwith "elaboration error"
     | NoMoreSteps -> assert false
   ;;

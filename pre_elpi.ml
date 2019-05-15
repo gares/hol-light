@@ -16,7 +16,7 @@ let add_coercion tm =
   let s,ty = dest_const tm in
   try let ty1,ty2 = dest_fun_ty ty in
       the_coercions := (s,(ty1,ty2,tm)) :: !the_coercions
-  with Failure _ -> failwith "add_coercion: not a function";; 
+  with Failure _ -> failwith "add_coercion: not a function";;
 
 let find_coercion s = assoc s !the_coercions;;
 
@@ -55,3 +55,35 @@ try_user_printer std_formatter `&0`;;
 
 `&0`;;
 *)
+
+(* ------------------------------------------------------------------------- *)
+(* Unsafe translation from preterm to terms.  Introduces an ad hoc constant  *)
+(* for "casting" a subterm as needed term.  Never fails.                     *)
+(* ------------------------------------------------------------------------- *)
+
+new_constant ("unsafe_cast", `:A -> B`);;
+
+let unsafe_cast_tm ty ty' = mk_mconst("unsafe_cast",mk_fun_ty ty ty');;
+
+let unsafe_mk_comb (tm1,tm2) =
+  try mk_comb(tm1,tm2) with Failure _ ->
+  let ty1 = type_of tm1
+  and ty2 = type_of tm2 in
+  try let ty2' = fst(dest_fun_ty ty1) in
+      let tm2' = mk_comb(unsafe_cast_tm ty2 ty2',tm2) in
+      mk_comb(tm1,tm2')
+  with Failure _ ->
+    let ty1' = mk_fun_ty ty2 ty1 in
+    let tm1' = mk_comb(unsafe_cast_tm ty1 ty1',tm1) in
+    mk_comb(tm1',tm2);;
+
+let unsafe_term_of_preterm =
+  let xty = mk_vartype "??" in
+  let rec unsafe ptm =
+    try term_of_preterm ptm with Failure _ ->
+    match ptm with
+      Varp(s,pty) | Constp(s,pty) -> mk_var(s,xty)
+    | Combp(l,r) -> unsafe_mk_comb(unsafe l,unsafe r)
+    | Absp(v,bod) -> mk_gabs(unsafe v,unsafe bod)
+    | Typing(ptm,pty) -> unsafe ptm in
+  unsafe;;

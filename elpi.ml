@@ -421,31 +421,6 @@ end
   ;;
   *)
 
-let unsafe_cast_tm ty ty' = mk_mconst("unsafe_cast",mk_fun_ty ty ty');;
-
-let unsafe_mk_comb (tm1,tm2) =
-  try mk_comb(tm1,tm2) with Failure _ ->
-  let ty1 = type_of tm1
-  and ty2 = type_of tm2 in
-  try let ty2' = fst(dest_fun_ty ty1) in
-      let tm2' = mk_comb(unsafe_cast_tm ty2 ty2',tm2) in
-      mk_comb(tm1,tm2')
-  with Failure _ ->
-    let ty1' = mk_fun_ty ty2 ty1 in
-    let tm1' = mk_comb(unsafe_cast_tm ty1 ty1',tm1) in
-    mk_comb(tm1',tm2);;
-
-let unsafe_term_of_preterm =
-  let xty = mk_vartype "??" in
-  let rec unsafe ptm =
-    try term_of_preterm ptm with Failure _ ->
-    match ptm with
-      Varp(s,pty) | Constp(s,pty) -> mk_var(s,xty)
-    | Combp(l,r) -> unsafe_mk_comb(unsafe l,unsafe r)
-    | Absp(v,bod) -> mk_gabs(unsafe v,unsafe bod)
-    | Typing(ptm,pty) -> unsafe ptm in
-  unsafe;;
-
 let elpi_string_of_preterm = string_of_term o unsafe_term_of_preterm;;
 
   module Builtins = struct
@@ -710,7 +685,6 @@ let elpi_string_of_preterm = string_of_term o unsafe_term_of_preterm;;
 end
 
 (* axiom for type error *)
-new_constant ("unsafe_cast", `:A -> B`);;
 new_constant ("type_error", `:A -> B`);;
 
 

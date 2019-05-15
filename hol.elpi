@@ -197,6 +197,15 @@ pred prove i:term, o:@thm.
 
 prove (app _ X) Thm :- hol.rule.refl X Thm.
 
+pred step i:goal, o:list goal, o:justification.
+
+step (app (app ()))
+
+step G GL J :-
+  hol.tac.ap_term_tac G [SG] J1,
+  hol.tac.ap_term_tac SG GL J2,
+  J = japp J1 J2.
+
 /*
 prove [p X (d X) |..] [not(p X) (d Y)|..] (r X=Y) :-...
 

@@ -612,10 +612,28 @@ macro @thm :- ctype "Hol.thm".
 % [hol.rule.refl X P] P is a proof of X = X
 external pred hol.rule.refl i:term, o:@thm.
 
-% HOL-light tactics
-kind tactic type.
-type arith term -> tactic.
-type refl term -> tactic.
+% -------------------- tactics ----------------------------
+
+% HOL-light hypothesis
+kind hyp type.
+type hyp string -> term -> @thm -> hyp.
+
+% HOL-light goal
+kind goal type.
+type goal list hyp -> term -> goal.
+
+% HOL tactic justification
+macro @just :- ctype "Hol.justification".
+
+% Elpi tactic justification
+kind justification type.
+type jml @just -> justification.
+type japp justification -> justification -> justification.
+type jproved @thm -> justification.
+type jstop goal -> justification.
+
+% [hol.tac.ap_term_tac G GS J] congruence
+external pred hol.tac.ap_term_tac i:goal, o:list goal, o:justification.
 
 
 

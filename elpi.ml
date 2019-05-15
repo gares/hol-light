@@ -27,7 +27,9 @@ module Elpi : sig
   (* Tactic *)
   val prove_tac : tactic
 
-end = struct
+  val step : tactic
+        
+end = struct 
 
   unset_jrh_lexer;;
 
@@ -396,24 +398,82 @@ module Thm = struct
 end
 
 module Tactics = struct
-type tactics =
-  | Arith of preterm
-  | Refl of preterm
 
-let tactics_adt = {
-  E.BuiltInPredicate.ADT.ty = TyName "tactic";
-  doc = "HOL-light tactics";
+type hyp = Hyp of string * preterm * thm
+type goal = Goal of hyp list * preterm
+type just = Just of (thm list -> thm)
+type justification =
+  | JML of just
+  | JApp of justification * justification
+  | JProved of thm
+  | JStop
+
+let hyp_adt = {
+  E.BuiltInPredicate.ADT.ty = TyName "hyp";
+  doc = "HOL-light hypothesis";
   constructors = [
-    K("arith","",A(Hol_preterm.t,N),
-      (fun t -> Arith t),
-      (fun ~ok ~ko -> function Arith t -> ok t | _ -> ko));
-    K("refl","",A(Hol_preterm.t,N),
-      (fun t -> Arith t),
-      (fun ~ok ~ko -> function Arith t -> ok t | _ -> ko));
 
+    K("hyp","",A(E.BuiltInPredicate.string, A(Hol_preterm.t, A(Thm.t,N))),
+      (fun s t p -> Hyp(s,t,p)),
+      (fun ~ok ~ko:_ -> function Hyp(s,t,p) -> ok s t p));
   ]
 }
-let t = E.BuiltInPredicate.adt tactics_adt
+let hyp = E.BuiltInPredicate.adt hyp_adt
+
+let goal_adt = {
+  E.BuiltInPredicate.ADT.ty = TyName "goal";
+  doc = "HOL-light goal";
+  constructors = [
+    K("goal","",A(E.BuiltInPredicate.list hyp,A(Hol_preterm.t,N)),
+      (fun h c -> Goal(h,c)),
+      (fun ~ok ~ko:_ -> function Goal(h,c) -> ok h c));
+  ]
+}
+let goal = E.BuiltInPredicate.adt goal_adt
+
+let just_cdata = E.CData.declare {
+      data_name = "Hol.justification";
+      data_pp = (fun fmt _ -> Format.fprintf fmt "<justification>");
+      data_eq = (fun t1 t2 -> t1 == t2);
+      data_hash = (fun t -> Hashtbl.hash t);
+      data_hconsed = false;
+ }
+let just = E.BuiltInPredicate.cdata ~name:"just" ~doc:"HOL tactic justification" just_cdata
+
+let justification_adt = {
+  E.BuiltInPredicate.ADT.ty = TyName "justification";
+  doc = "Elpi tactic justification";
+  constructors = [
+    K("jml","",A(just,N),
+      (fun f -> JML f),
+      (fun ~ok ~ko -> function JML f -> ok f | _ -> ko));
+    K("japp","",S(S N),
+      (fun f j -> JApp(f,j)),
+      (fun ~ok ~ko -> function JApp(f,j) -> ok f j | _ -> ko));
+    K("jproved","",A(Thm.t,N),
+      (fun p -> JProved p),
+      (fun ~ok ~ko -> function JProved p -> ok p | _ -> ko));
+    K("jstop","",N,
+      (JStop),
+      (fun ~ok ~ko -> function JStop -> ok | _ -> ko)); 
+  ]
+}
+let justification = E.BuiltInPredicate.adt justification_adt
+
+let holg2elpig (hyps,concl) =
+  let hyps = List.map (fun (s,thm) ->
+    Hyp (s,preterm_of_term (Hol.concl thm),thm)) hyps in
+  Goal(hyps,preterm_of_term concl)
+
+let elpig2holg (Goal(hyps,g)) =
+  let hyps = List.map (fun (Hyp (s,_,thm)) -> s,thm) hyps in
+   (hyps, term_of_preterm g)
+
+let rec interp_j = function
+  | JML (Just f) -> f
+  | JApp (j1,j2) -> fun l -> interp_j j1 [interp_j j2 l]
+  | JProved thm -> fun l -> assert(l = []); thm
+  | JStop -> (function [t] -> t | _ -> assert false)
 
 end
 
@@ -587,8 +647,28 @@ let elpi_string_of_preterm = string_of_term o unsafe_term_of_preterm;;
       val INST : (term * term) list -> thm -> thm
 *)
 
-    MLADT Tactics.tactics_adt;
+    LPDoc "-------------------- tactics ----------------------------";
 
+
+
+    MLADT Tactics.hyp_adt;
+    MLADT Tactics.goal_adt;
+    MLCData (Tactics.just, Tactics.just_cdata);
+    MLADT Tactics.justification_adt;
+
+    MLCode (Pred("hol.tac.ap_term_tac",
+      In(Tactics.goal,"G",
+      Out(list Tactics.goal,"GS",
+      Out(Tactics.justification,"J",
+      Easy "congruence"))),
+    (fun g _ _ ~depth:_ ->
+      set_jrh_lexer;
+      let _, gs, j = AP_TERM_TAC (Tactics.elpig2holg g) in
+      let gs = List.map Tactics.holg2elpig gs in
+      unset_jrh_lexer;
+      !: gs +! (Tactics.JML (Tactics.Just (j null_inst)))
+    )),
+    DocAbove)
 
   ]
   ;;
@@ -726,6 +806,41 @@ let elpi_string_of_preterm = string_of_term o unsafe_term_of_preterm;;
     | Failure -> failwith "prover fails"
     | NoMoreSteps -> assert false
   ;;
+
+  let stepc = E.Data.Constants.from_stringc "step";;
+
+  let step (goal : goal) : goalstate =
+    let q = E.Compile.query (hol ()) (fun ~depth st ->
+      let st, goal, _ = Tactics.goal.E.BuiltInPredicate.embed ~depth [] E.Data.no_constraints st (Tactics.holg2elpig goal) in
+      let st, goals = E.Compile.mk_Arg st ~name:"GOALS" ~args:[] in
+      let st, j = E.Compile.mk_Arg st ~name:"J" ~args:[] in
+      st, (Ast.Loc.initial "(step)",mkApp stepc goal [goals;j])) in
+
+
+    (* We disable traces when we typecheck the elpi code (Elpi's type checker
+       is an elpi program too) *)
+    let are_we_debugging = !debugging in
+    Setup.trace [];
+    let _ = Compile.static_check header q in
+    debug are_we_debugging;
+
+    let exe = Compile.link q in
+    match Execute.once exe with
+    | Execute.Success { Elpi_API.Data.assignments = a; constraints = c; state = s} ->
+        let goals = E.Data.of_term (Data.StrMap.find "GOALS" a) in
+        let j = E.Data.of_term (Data.StrMap.find "J" a) in
+        let goals = E.Utils.lp_list_to_list ~depth:0 goals in
+        let s, goals =
+          E.BuiltInPredicate.map_acc_readback
+            (Tactics.goal.readback ~depth:0 [] c) s goals in
+        let s, j =
+          Tactics.justification.readback ~depth:0 [] c s j in
+        null_meta, List.map Tactics.elpig2holg goals, (fun _ -> Tactics.interp_j j)
+    | Failure -> failwith "prover fails"
+    | NoMoreSteps -> assert false
+  ;;
+
+
 
   set_jrh_lexer;;
 

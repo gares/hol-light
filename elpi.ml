@@ -3,7 +3,7 @@
 needs "parser.ml";;
 
 module Elpi : sig
-    
+
   type elpi_code
 
   (* compile elpi files *)
@@ -19,8 +19,8 @@ module Elpi : sig
 
   (* The ``quotation`` calling Elpi's elab predicate *)
   val quotation : string -> preterm
-        
-end = struct 
+
+end = struct
 
   unset_jrh_lexer;;
 
@@ -41,7 +41,7 @@ end = struct
 
 (* Each module Hol_datatype.t defines an embed and readback function to be
    used later on to declare built-in predicates. Morally
-     
+
      type 'a data = {
        embed : 'a -> E.Data.term
        readback : E.Data.term -> 'a
@@ -50,7 +50,7 @@ end = struct
    but since it is handy to have extra info in a state, these two functions
    are also take and return a E.State.t. We use that to store a mapping
    between Elpi's unification variables and HOL-light Stv, for example.
-   
+
 *)
 
 (* --------------------------------------------------------------------- *)
@@ -64,7 +64,7 @@ end = struct
       val mk_app : string -> E.Data.term list -> E.Data.term
       val appc : E.Data.constant
       val varc : E.Data.constant
-    end 
+    end
   end = struct module Internal = struct
 
   (* signature *)
@@ -73,9 +73,9 @@ end = struct
 
   (* helpers *)
   let mk_var s = mkApp varc (of_string s) [];;
-  let mk_app s l = mkApp appc (of_string s) [list_to_lp_list l];; 
+  let mk_app s l = mkApp appc (of_string s) [list_to_lp_list l];;
 
-  (* State component mapping elpi unification variables to HOL-light's 
+  (* State component mapping elpi unification variables to HOL-light's
     invented (system) type variables *)
   let invented_tyvars =
     E.State.declare ~name:"invented-tyvars"
@@ -94,11 +94,11 @@ end = struct
     let rec aux t =
       match t with (*
       | Ptycon("",[]) ->
-          let s, n = E.State.update_return invented_tyvars !state 
+          let s, n = E.State.update_return invented_tyvars !state
             (fun (n,l) -> (n-1,l),n) in
           state := s;
           aux (Stv n) *)
-      | Ptycon(s,tl) -> mk_app s (List.map aux tl) 
+      | Ptycon(s,tl) -> mk_app s (List.map aux tl)
       | Utv s -> mk_var s
       | Stv n ->
           let tyvarsno, tyvars = E.State.get invented_tyvars !state in
@@ -109,7 +109,7 @@ end = struct
             let b = E.Data.fresh_uvar_body !state in
             let tyvars = (b, (depth, n)) :: tyvars in
             state := E.State.set invented_tyvars !state (tyvarsno,tyvars);
-            aux t         
+            aux t
     in
     let t = aux t in
     !state, t, []
@@ -244,7 +244,7 @@ end = struct
   module Hol_type_schema : sig
 
     val t : (hol_type list * hol_type) E.BuiltInPredicate.data
- 
+
   end = struct
 
   let monoc = Constants.from_stringc "mono"
@@ -382,10 +382,10 @@ end
   let readback_thm ~depth hyps { E.Data.state = s } t =
     match look ~depth t with
     | (UVar _ | AppUVar _) -> s, E.BuiltInPredicate.Flex t
-    | Discard -> s, E.BuiltInPredicate.Discard    
+    | Discard -> s, E.BuiltInPredicate.Discard
     | App(c,hyps,[concl]) when c == sequentc ->
         assert false
-    | _ -> type_error "readback_thm" 
+    | _ -> type_error "readback_thm"
   ;;
 
   let sequent : thm E.BuiltInPredicate.data = {
@@ -396,31 +396,33 @@ end
   ;;
   *)
 
-(* TODO: jsut defined unsafe_mk_comb and use everywhere below *)
-let unsafe_cast tm ty =
-  let pty = type_of tm in
-  if pty = ty then tm else
-  mk_comb(mk_mconst("unsafe_cast",mk_fun_ty pty ty),tm)
-  ;;
+let unsafe_cast_tm ty ty' = mk_mconst("unsafe_cast",mk_fun_ty ty ty');;
 
-let elpi_string_of_preterm =
-    let rec untyped_t_of_pt = function
-      |Varp(s,pty) -> mk_var(s,type_of_pretype pty)
-      |Constp(s,pty) -> mk_mconst(s,type_of_pretype pty)
-      |Combp(l,r) ->
-         let l' = untyped_t_of_pt l in
-         let r' = untyped_t_of_pt r in
-         begin try mk_comb(l',r') with
-           Failure _ ->
-             let f = type_of l' in
-             let pty = fst (dest_fun_ty f) in
-             mk_comb(l',unsafe_cast r' pty)            
-          end
-      |Absp(v,bod) -> mk_gabs(untyped_t_of_pt v,untyped_t_of_pt bod)
-      |Typing(ptm,pty) -> untyped_t_of_pt ptm
-    in
-    string_of_term o untyped_t_of_pt
-  ;;
+let unsafe_mk_comb (tm1,tm2) =
+  try mk_comb(tm1,tm2) with Failure _ ->
+  let ty1 = type_of tm1
+  and ty2 = type_of tm2 in
+  try let ty2' = fst(dest_fun_ty ty1) in
+      let tm2' = mk_comb(unsafe_cast_tm ty2 ty2',tm2) in
+      mk_comb(tm1,tm2')
+  with Failure _ ->
+    let ty1' = mk_fun_ty ty2 ty1 in
+    let tm1' = mk_comb(unsafe_cast_tm ty1 ty1',tm1) in
+    mk_comb(tm1',tm2);;
+
+let unsafe_term_of_preterm =
+  let xty = mk_vartype "??" in
+  let rec recur = function
+    | Varp(s,pty) | Constp(s,pty) -> mk_var(s,xty)
+    | Combp(l,r) -> unsafe_mk_comb(unsafe l,unsafe r)
+    | Absp(v,bod) -> mk_gabs(unsafe v,unsafe bod)
+    | Typing(ptm,pty) -> unsafe ptm
+  and unsafe tm =
+    try term_of_preterm (retypecheck [] tm)
+    with Failure _ -> recur tm in
+  unsafe;;
+
+let elpi_string_of_preterm = string_of_term o unsafe_term_of_preterm;;
 
   module Builtins = struct
 
@@ -547,7 +549,7 @@ let elpi_string_of_preterm =
 
   let files fl : elpi_code =
     let p = Parse.program fl in
-    Compile.program ~flags:Compile.default_flags header [p] 
+    Compile.program ~flags:Compile.default_flags header [p]
   ;;
 
   let hol () = files ["hol.elpi"];;

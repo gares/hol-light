@@ -1,6 +1,7 @@
 #use "topfind";;
 #require "elpi";;
 needs "parser.ml";;
+needs "pre_elpi.ml";;
 
 module Elpi : sig
 

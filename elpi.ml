@@ -703,8 +703,11 @@ let elpi_string_of_preterm = string_of_term o unsafe_term_of_preterm;;
   type elpi_code = Compile.program
 
   let files fl : elpi_code =
-    let p = Parse.program fl in
-    Compile.program ~flags:Compile.default_flags header [p]
+    try
+      let p = Parse.program fl in
+      Compile.program ~flags:Compile.default_flags header [p]
+    with Parse.ParseError(loc,msg) ->
+      failwith ("elpi: " ^ Elpi_API.Ast.Loc.show loc ^ ": " ^ msg)
   ;;
 
   let hol () = files ["hol.elpi"];;

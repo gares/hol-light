@@ -25,6 +25,13 @@ sed 's/^needs "nets.ml"/open Lib;; open Fusion;; open Basics;; open Nets/' |\
 sed 's/^needs "printer.ml"/open Lib;; open Fusion;; open Basics;; open Nets;; open Printer/' |\
 sed 's/^needs "preterm.ml"/open Lib;; open Fusion;; open Basics;; open Nets;; open Printer;; open Preterm/' |\
 sed 's/^needs "parser.ml"/open Lib;; open Fusion;; open Basics;; open Nets;; open Printer;; open Preterm;; open Parser/' |\
+sed 's/^needs "equal.ml"/open Lib;; open Fusion;; open Basics;; open Nets;; open Printer;; open Preterm;; open Parser;; open Equal/' |\
+sed 's/^needs "bool.ml"/open Lib;; open Fusion;; open Basics;; open Nets;; open Printer;; open Preterm;; open Parser;; open Equal;; open Bool/' |\
+sed 's/^needs "drule.ml"/open Lib;; open Fusion;; open Basics;; open Nets;; open Printer;; open Preterm;; open Parser;; open Equal;; open Bool;; open Drule/' |\
+sed 's/^needs "tactics.ml"/open Lib;; open Fusion;; open Basics;; open Nets;; open Printer;; open Preterm;; open Parser;; open Equal;; open Bool;; open Drule;; open Tactics/' |\
+sed 's/^needs "pre_elpi.ml"/open Lib;; open Fusion;; open Basics;; open Nets;; open Printer;; open Preterm;; open Parser;; open Equal;; open Bool;; open Drule;; open Tactics;; open Pre_elpi/' |\
+
+
 cat >> $TMP
 
 if [ "$MERLIN" = 1 ]; then

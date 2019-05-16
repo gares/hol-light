@@ -159,6 +159,11 @@ merlin:
 	$(call build,printer.ml)
 	$(call build,preterm.ml)
 	$(call build,parser.ml)
+	$(call build,equal.ml)
+	$(call build,bool.ml)
+	$(call build,drule.ml)
+	$(call build,tactics.ml)
+	$(call build,pre_elpi.ml)
 
 run:
 	readline-editor -- ocaml -I `camlp5 -where`

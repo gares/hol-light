@@ -189,6 +189,8 @@ end = struct
       s, t in
     let rec aux state t =
       match t with
+      | Varp(" elpi ",Ptycon(text,[])) ->
+          E.Compile.lp ~depth state (Elpi_API.Ast.Loc.initial "(antiquotation") text
       | Varp(s,ty) ->
           let state, ty = embed_ty state ty in
           state, mk_var s ty
@@ -853,3 +855,12 @@ end
 let () = Elpi.query (Elpi.hol ()) "self-test";;
 
 let _ : thm = prove (`0 = 0`, Elpi.prove_tac)
+
+(* Antiquotation *)
+let () = reserve_words ["^"];;
+let () = install_parser ("elpi",(function
+  | Resword "^" :: Resword "{" :: Ident v :: Resword "}" :: rest ->
+      Varp(" elpi ",Ptycon(v,[])), rest
+  | _ -> raise Noparse
+))
+;;

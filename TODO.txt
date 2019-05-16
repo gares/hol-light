@@ -1,0 +1,8 @@
+To Do list
+
+- Typechecker (informative type errors?)
+- Classes
+- Tactic language + new ITAUT
+- Isar?
+- Proof outlines (Roberto Blanco)
+- HO unification

@@ -56,6 +56,12 @@ pred copy-prety i:pretype, o:pretype.
 copy-prety (uty _S as X) X.
 copy-prety (sty _N as X) X.
 copy-prety (ptycon S Ts) (ptycon S Rs) :- std.map Ts copy-prety Rs.
+% since we may put refreshed schemas inside terms and since we copy
+% types attached to constp/typingp and since this predicate is not
+% generative we need to handle the case in which the input is flexible
+% explicitly (`uvar` is a keyword)
+copy-prety (uvar as X) X.
+
 
 % Closed pretype associated to a given pretype.
 pred pretype-close i:pretype, o:cpretype.
@@ -77,7 +83,7 @@ type typing  preterm -> pretype -> preterm.          % Typing
 type absp    preterm -> preterm -> preterm.          % Abstraction
 type lamp    preterm ->                              % HO Abstraction
              (preterm -> preterm) ->
-	     preterm.
+             preterm.
 
 kind cpreterm type.
 
@@ -100,6 +106,7 @@ copy-term (absp V1 X1) (absp V2 X2) :-
   copy-term X1 X2.
 copy-term (lamp V B1) (lamp V B2) :-
   pi x\ copy-term x x => copy-term (B1 x) (B2 x).
+copy-term (uvar as X) X.
 
 pred bind-term i:preterm, o:preterm.
 
@@ -108,6 +115,14 @@ bind-term T1 T2 :-
      (copy-term (absp V T) (lamp V B) :- !,
         pi v \ (copy-term V v :- !) => copy-term T (B v)))
   => copy-term T1 T2.
+
+pred unbind-term i:preterm, o:preterm.
+
+unbind-term T1 T2 :-
+  (pi V T B \
+     (copy-term (lamp V T) (absp V X) :- !, copy-term (T V) X)
+  => copy-term T1 T2.
+
 
 pred tmvars i:preterm, i:list preterm, o:list preterm.
 
@@ -131,6 +146,50 @@ pred close-term i:list preterm, i:preterm, o:cpreterm.
 close-term [] P (tmbody Q) :- copy-term P Q.
 close-term [V|Vs] P (tmbind V B) :-
   pi v \ (copy-term V v :- !) => close-term Vs P (B v).
+
+pred open-term i:cpreterm, o:preterm.
+
+open-term (tmbody X) X.
+open-term (tmbind V B) X :- open-term (B V) X.
+
+%% ----------------------------------------------------------------------------
+%% typing
+%% ----------------------------------------------------------------------------
+
+pred refresh-cpretype i:cpretype, o:pretype.
+
+refresh-cpretype (ptbody T) T.
+refresh-cpretype (allprety _ F) T :- refresh-cpretype (F FRESH_) T.
+
+of (absp _ _) _ _ :- halt "absp".
+
+of (constp S TY) TY (constp S TY).
+
+of (lamp (varp S _) F) (ptycon "fun" [Src,Tgt]) (lamp (varp S Src) F1) :-
+  pi x\
+     (pi T\ of x T x :- !, T = Src) =>
+     of (F x) Tgt (F1 x).
+
+of (combp A B) Tgt (combp A1 B1) :-
+  of A (ptycon "fun" [Src,Tgt]) A1,
+  of B Src B1.
+
+of-c (tmbody X) T (tmbody X1) :- of X T X1.
+of-c (tmbind (varp S _) B) T (tmbind (varp S Ty) B1) :-
+  pi x\
+     (pi T\ of x T x :- !, Ty = T) =>
+     of-c (B x) T (B1 x).
+
+elab T R :-
+  (pi S TY TYS\ 
+    copy-term (varp S _) (constp S TY) :- hol.env S TYS, refresh-cpretype TYS)
+  =>
+    term-close T TC,
+  tmvars TC [] VS,
+  close-term VS TC INPUT,
+  of-c INPUT Type OUTPUT, print INTPUT "->" OUTPUT ":" Ty, 
+  open-term OUTPUT R.
+
 
 %% ----------------------------------------------------------------------------
 %% Some tests.

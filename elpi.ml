@@ -729,12 +729,16 @@ let elpi_string_of_preterm = string_of_term o unsafe_term_of_preterm;;
       debugging := Off
   ;;
 
-  let query ?max_steps p s =
-    let q = Parse.goal (Ast.Loc.initial "(query)") s in
-    let q = Compile.query p q in
+  let static_check h q =
+    if not (Compile.static_check h q) then
+      failwith "elpi: type error"
+  ;;
+
+  let run_text ?max_steps program query =
+    let q = Parse.goal (Ast.Loc.initial "(query)") query in
+    let q = Compile.query program q in
     let exe = Compile.link q in
-    let check_ok = Compile.static_check header q in
-    assert check_ok;
+    static_check header q;
     match Execute.once ?max_steps exe with
     | Execute.Success { assignments = assignments } ->
         if not (Data.StrMap.is_empty assignments) then
@@ -746,32 +750,69 @@ let elpi_string_of_preterm = string_of_term o unsafe_term_of_preterm;;
         Format.printf "Timeout\n"
   ;;
 
-  (* This is the entry point predicate for calling the elaborator *)
-  let elabc = E.Data.Constants.from_stringc "elab" ;;
-
-  (* This runs the elpi query requesting the elaboration of a given term *)
-  let elaborate p =
-    let q = E.Compile.query (hol ()) (fun ~depth st ->
-      let st, t, _ = Hol_preterm.t.E.BuiltInPredicate.embed ~depth [] E.Data.no_constraints st p in
-      let st, x = E.Compile.mk_Arg st ~name:"E" ~args:[] in
-      st, (Ast.Loc.initial "(quotation)",mkApp elabc t [x])) in
+  let run_predicate ?max_steps program build_query =
+    let q = E.Compile.query program build_query in
 
     (* We disable traces when we typecheck the elpi code (Elpi's type checker
        is an elpi program too) *)
     let are_we_debugging = !debugging in
     Setup.trace [];
-    let check_ok = Compile.static_check header q in
-    assert check_ok;
+    static_check header q;
     debug are_we_debugging;
 
     let exe = Compile.link q in
 
     match Execute.once exe with
-    | Execute.Success { Elpi_API.Data.assignments = a; constraints = c; state = s} ->
-        let t = Data.StrMap.find "E" a in
-        term_of_preterm (snd (Hol_preterm.t.readback ~depth:0 [] c s (E.Data.of_term t)))
-    | Failure -> failwith "elaboration error"
+    | Execute.Success s -> s
+    | Failure -> failwith "elpi finds no solution"
     | NoMoreSteps -> assert false
+  ;;
+
+  (* ================================================================ *)
+  (* Entry points to call elpi code *)
+
+  let query ?max_steps p s = run_text ?max_steps p s;;
+
+  let prove concl =
+    let provec = E.Data.Constants.from_stringc "prove" in
+    let { Elpi_API.Data.assignments = a; constraints = c; state = s} =
+      run_predicate (hol ()) (fun ~depth st ->
+        let concl = preterm_of_term concl in
+        let st, concl, _ = Hol_preterm.t.E.BuiltInPredicate.embed ~depth [] E.Data.no_constraints st concl in
+        let st, p = E.Compile.mk_Arg st ~name:"P" ~args:[] in
+        st, (Ast.Loc.initial "(prove)",mkApp provec concl [p])) in
+    let p = Data.StrMap.find "P" a in
+    snd(Thm.t.readback ~depth:0 [] c s (E.Data.of_term p))
+  ;;
+
+  let step (goal : goal) : goalstate =
+    let stepc = E.Data.Constants.from_stringc "step" in
+    let { Elpi_API.Data.assignments = a; constraints = c; state = s} =
+      run_predicate (hol ()) (fun ~depth st ->
+        let st, goal, _ = Tactics.goal.E.BuiltInPredicate.embed ~depth [] E.Data.no_constraints st (Tactics.holg2elpig goal) in
+        let st, goals = E.Compile.mk_Arg st ~name:"GOALS" ~args:[] in
+        let st, j = E.Compile.mk_Arg st ~name:"J" ~args:[] in
+        st, (Ast.Loc.initial "(step)",mkApp stepc goal [goals;j])) in
+    let goals = E.Data.of_term (Data.StrMap.find "GOALS" a) in
+    let j = E.Data.of_term (Data.StrMap.find "J" a) in
+    let goals = E.Utils.lp_list_to_list ~depth:0 goals in
+    let s, goals =
+      E.BuiltInPredicate.map_acc_readback
+        (Tactics.goal.readback ~depth:0 [] c) s goals in
+    let s, j = Tactics.justification.readback ~depth:0 [] c s j in
+    null_meta, List.map Tactics.elpig2holg goals, (fun _ -> Tactics.interp_j j)
+  ;;
+
+  (* This runs the elpi query requesting the elaboration of a given term *)
+  let elaborate p =
+    let elabc = E.Data.Constants.from_stringc "elab" in
+    let { Elpi_API.Data.assignments = a; constraints = c; state = s} =
+      run_predicate (hol ()) (fun ~depth st ->
+        let st, t, _ = Hol_preterm.t.E.BuiltInPredicate.embed ~depth [] E.Data.no_constraints st p in
+        let st, x = E.Compile.mk_Arg st ~name:"E" ~args:[] in
+        st, (Ast.Loc.initial "(quotation)",mkApp elabc t [x])) in
+    let t = Data.StrMap.find "E" a in
+    term_of_preterm (snd (Hol_preterm.t.readback ~depth:0 [] c s (E.Data.of_term t)))
   ;;
 
   let quotation s =
@@ -783,75 +824,11 @@ let elpi_string_of_preterm = string_of_term o unsafe_term_of_preterm;;
   let () = Quotation.add "elp" (Quotation.ExStr (fun _ s ->
     "Elpi.quotation \""^String.escaped s^"\""));;
 
-
-  (* Using an elpi predicate as a rule/tactic *)
-  let provec = E.Data.Constants.from_stringc "prove";;
-
-  let prove concl =
-    let q = E.Compile.query (hol ()) (fun ~depth st ->
-      let concl = preterm_of_term concl in
-      let st, concl, _ = Hol_preterm.t.E.BuiltInPredicate.embed ~depth [] E.Data.no_constraints st concl in
-      let st, p = E.Compile.mk_Arg st ~name:"P" ~args:[] in
-      st, (Ast.Loc.initial "(prove)",mkApp provec concl [p])) in
-
-    (* We disable traces when we typecheck the elpi code (Elpi's type checker
-       is an elpi program too) *)
-    let are_we_debugging = !debugging in
-    Setup.trace [];
-    let check_ok = Compile.static_check header q in
-    assert check_ok;
-    debug are_we_debugging;
-
-    let exe = Compile.link q in
-    match Execute.once exe with
-    | Execute.Success { Elpi_API.Data.assignments = a; constraints = c; state = s} ->
-        let p = Data.StrMap.find "P" a in
-        snd(Thm.t.readback ~depth:0 [] c s (E.Data.of_term p))
-    | Failure -> failwith "prover fails"
-    | NoMoreSteps -> assert false
-  ;;
-
-  let stepc = E.Data.Constants.from_stringc "step";;
-
-  let step (goal : goal) : goalstate =
-    let q = E.Compile.query (hol ()) (fun ~depth st ->
-      let st, goal, _ = Tactics.goal.E.BuiltInPredicate.embed ~depth [] E.Data.no_constraints st (Tactics.holg2elpig goal) in
-      let st, goals = E.Compile.mk_Arg st ~name:"GOALS" ~args:[] in
-      let st, j = E.Compile.mk_Arg st ~name:"J" ~args:[] in
-      st, (Ast.Loc.initial "(step)",mkApp stepc goal [goals;j])) in
-
-
-    (* We disable traces when we typecheck the elpi code (Elpi's type checker
-       is an elpi program too) *)
-    let are_we_debugging = !debugging in
-    Setup.trace [];
-    let _ = Compile.static_check header q in
-    debug are_we_debugging;
-
-    let exe = Compile.link q in
-    match Execute.once exe with
-    | Execute.Success { Elpi_API.Data.assignments = a; constraints = c; state = s} ->
-        let goals = E.Data.of_term (Data.StrMap.find "GOALS" a) in
-        let j = E.Data.of_term (Data.StrMap.find "J" a) in
-        let goals = E.Utils.lp_list_to_list ~depth:0 goals in
-        let s, goals =
-          E.BuiltInPredicate.map_acc_readback
-            (Tactics.goal.readback ~depth:0 [] c) s goals in
-        let s, j =
-          Tactics.justification.readback ~depth:0 [] c s j in
-        null_meta, List.map Tactics.elpig2holg goals, (fun _ -> Tactics.interp_j j)
-    | Failure -> failwith "prover fails"
-    | NoMoreSteps -> assert false
-  ;;
-
-
-
   set_jrh_lexer;;
 
   let prove_tac = CONV_TAC prove
 
 end
-
 
 (* little test *)
 let () = Elpi.query (Elpi.hol ()) "self-test";;

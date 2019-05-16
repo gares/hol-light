@@ -861,7 +861,7 @@ let _ : thm = prove (`0 = 0`, Elpi.prove_tac)
 (* Antiquotation *)
 let () = reserve_words ["^"];;
 let () = install_parser ("elpi",(function
-  | Resword "^" :: Resword "{" :: Ident v :: Resword "}" :: rest ->
+  | Resword "^" :: Ident v :: rest ->
       Varp(" elpi ",Ptycon(v,[])), rest
   | _ -> raise Noparse
 ))

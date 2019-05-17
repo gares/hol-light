@@ -6,7 +6,15 @@ To Do list
 - Isar?
 - Proof outlines (Roberto Blanco)
 - HO unification
+- immersione MLTT (basata sui PER) e usare il type checker
+  come un dimostratore degli invarianti esprimibili in TT
+    ``` m1 * m2 = m3 :: Prop ==> ``` con ```m1 : 'M(n,m) ``` 
 
+   `m1 * m2 = m3 /\ rows m1 = cols m2 /\ .... ==> `
+
+   `!m. is_matrix m m /\ cols m = rows m   => m * m = m`
+
+   
 
 
 ======================================

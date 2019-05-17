@@ -217,6 +217,28 @@ of (combp A B) Tgt (combp A1 B1) :-
   of A (ptycon "fun" [Src,Tgt]) A1,
   of B Src B1.
 
+pred of-loop. 
+
+of PTM TY TM :- not (var TY), not of-loop,
+  of-loop => of PTM TY1 TM1,
+  coercions Coercions,
+  mem Coercions (coercion S TS),
+  refresh-cpretype TS (ptycon "fun" [TY1, TYm]),
+  % we type check again to compose coercions, but one could
+  % compute a path in Coercions from TY1 to TY and avoid
+  % the recursive call below
+  of (combp (constp S (ptycon "fun" [TY1, TYm])) TM1) TY TM.
+
+% HOL-light coercion
+kind coercion type.
+type coercion string -> cpretype -> coercion.
+
+pred coercions o:list coercion.
+
+pred mem i:list A, o:A.
+mem [X|_] X.
+mem [_|Xs] X :- mem Xs X.
+
 pred of-c i:cpreterm, o:pretype, o:cpreterm.
 
 of-c (ptmbody X) T (ptmbody X1) :- of X T X1.
@@ -246,8 +268,8 @@ test1ok P :-
   print "  FAILURE: " P.
 
 test1 P :-
-  print "Test >>>" P, P Result, !, print "     <<<" Result;
-  print "     <<<" P.
+  print "Test >>>" P, P Result, !, print "  OK <<<" Result;
+  print "  FAILURE: " P.
 
 pred tests i:list any.
 
@@ -255,6 +277,8 @@ tests [].
 tests [T|Ts] :- test1 T, tests Ts.
 
 macro @dummy :- ptycon "" [].
+macro @fun L :- ptycon "fun" L.
+macro @con X :- ptycon X [].
 
 main :-
   print "Tests start ...",
@@ -274,8 +298,25 @@ main :-
     test1 (close-term (absp (varp "x" (uty "t"))
                              (combp (varp "y" (uty "t"))
                               (combp (varp "x" (uty "t")) (varp "0" @dummy))))),
-(env "0" (ptybody (ptycon "num" []))) =>
+  (env "0" (ptybody (ptycon "num" []))) =>
     test1 (elab (absp (varp "x" (uty "t"))
                              (combp (varp "y" (uty "t"))
                               (combp (varp "x" (uty "t")) (varp "0" @dummy))))),
+  (env "0" (ptybody (ptycon "num" []))) =>
+  (env "real_of_num" (ptybody (@fun [@con "num", @con "real"]))) =>
+  (coercions [coercion "real_of_num" (ptybody (@fun [@con "num", @con "real"]))]) =>
+    test1 (elab (absp (typing (varp "x" (uty "t")) (@fun [@con "real", @con "bool"]))
+                             (combp (varp "y" (uty "t"))
+                              (combp (varp "x" (uty "t")) (varp "0" @dummy))))),
+ (env "0" (ptybody (ptycon "num" []))) =>
+ (env "real_of_num" (ptybody (@fun [@con "num", @con "real"]))) =>
+ (env "complex_of_real" (ptybody (@fun [@con "real", @con "complex"]))) =>
+
+  (coercions [coercion "real_of_num"     (ptybody (@fun [@con "num",  @con "real"])),
+              coercion "complex_of_real" (ptybody (@fun [@con "real", @con "complex"]))
+             ]) =>
+    test1 (elab (absp (typing (varp "x" (uty "t")) (@fun [@con "complex", @con "bool"]))
+                              (combp (varp "x" (uty "t")) (varp "0" @dummy)))),
+
+
   print "... tests finished.".

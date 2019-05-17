@@ -1,8 +1,63 @@
 To Do list
 
 - Typechecker (informative type errors?)
-- Classes
+- Classes (see what they do in Isabelle)
 - Tactic language + new ITAUT
 - Isar?
 - Proof outlines (Roberto Blanco)
 - HO unification
+
+
+
+======================================
+
+Discussione sulle classi:
+
+1) risultato dell'inferenza di tipo, dove ?? è un esiste speciale che
+   risolviamo con elpi (subito dopo l'elaborazione che facciamo ora, ma
+   avendo accesso al contesto di prova).
+
+ t : type
+ r : (t)ring
+ Hr : is_ring r
+------------------------
+ ??m : (t)monoid. is_monoid m /\
+ ??g : (t)group. is_group g /\
+   !x y : t.(op : (A)monoid -> A -> A) m (x : t) y = (ginv : (A)group -> A -> A) g x`;;
+
+2) le istanze trovate sono una sorta di reificazione della prova a partire dal contesto,
+   la ricerca va fatta in modo non solo backward, ma usando il contesto e il goal allo stesso tempo, altrimenti
+   cadiamo nel problema di efficenza delle classi di tipo in Coq (che invece le strutture canoniche non hanno)
+
+ t : type
+ r : (t)ring
+ Hr : is_ring r
+------------------------
+   !x y : t.(op : (A)monoid -> A -> A) (r2m r) (x : t) y = (ginv : (A)group -> A -> A) (r2g r) x`
+
+altro esempio
+
+   !x : t. ginv (r2g r) (ginv (r2g r) x) = x.
+
+3) l'applicazione di un teorema ha ipotesi che uno deve soddisfare usando la
+   base di conoscenza algebrica, se non ci riesec allora non si applica proprio?
+
+
+   !x : s. !g : (s)group. is_group g ==> x IN g ==> ginv g (ginv g x) = x.
+
+                          ^^^^hyp^^^
+
+Esempio classico in math-comp:
+
+
+ is_group H
+--------------
+  one ?g IN (H & f @ G)                     forall t, is_group t -> 1 IN t
+
+
+is_group (A & B) J :-  is_group A J1 , is_group_B J2, J = mmm.
+
+
+ 
+  
+

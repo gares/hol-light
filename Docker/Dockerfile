@@ -1,23 +1,30 @@
 ### ===========================================================================
 ### Dockerfile for a debian image with all ready to run HOL Light.
-### Marco Maggesi (University of Florence, Italy)
 ### ===========================================================================
 
 ### ---------------------------------------------------------------------------
 ### Usage
 ###
+### Run these shell commands from the top directory of this repository.
+###
 ### To build the container:
-### docker build --target holelpi -t holelpi Stack
-### or
-### docker build --pull --no-cache --target holelpi -t holelpi Stack
+###
+###   $ docker build --target holelpi -t holelpi Docker
+###
+### or, use options --pull --no-cache if you want to refresh the
+### downloaded layers:
+###
+###   $ docker build --pull --no-cache --target holelpi -t holelpi Docker
 ###
 ### To start the container:
-### docker run --rm -it -v 'path-to-hol-dir:/home/opam/work'
+###
+###   docker run --rm -it -v 'path-to-hol-dir:/home/opam/work' holelpi bash
 ### ---------------------------------------------------------------------------
 
 ### ---------------------------------------------------------------------------
 ### Target: holelpi
-### Debian image with elpi, dmtcp and minimal software installed (OCaml).
+### Debian image with OCaml, elpi, dmtcp and other tools installed.
+### Notice HOL Light itself is not installed!
 ### ---------------------------------------------------------------------------
 
 FROM ocaml/opam2:debian-stable AS holelpi
@@ -60,5 +67,8 @@ RUN make install
 USER opam
 
 RUN mkdir -p /home/opam/work
+
+### Let also add merlin!
+RUN opam install merlin
 
 WORKDIR /home/opam/work

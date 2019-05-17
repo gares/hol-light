@@ -123,10 +123,11 @@ pred ptmvars i:preterm, i:list preterm, o:list preterm.
 
 ptmvars (varp _ _ as X) Vs Vs :- std.mem Vs X, !.
 ptmvars (varp _ _ as X) Vs [X|Vs].
+ptmvars (constp _ _) L L.
 ptmvars (combp X Y) Vs Ws :- ptmvars X Vs Us, ptmvars Y Us Ws.
 ptmvars (typing X T_) Vs Ws :- ptmvars X Vs Ws.
 ptmvars (lamp V_ B) Vs Ws :-
-  pi x \ (pi Vs\ ptmvars x Vs Vs) => ptmvars (B x) Vs Ws.
+  pi x \ (pi L\ ptmvars x L L) => ptmvars (B x) Vs Ws.
 
 %% ----------------------------------------------------------------------------
 %% Turning nominal abstractions into bound HOAS abstractions.
@@ -134,12 +135,18 @@ ptmvars (lamp V_ B) Vs Ws :-
 %% ----------------------------------------------------------------------------
 
 pred ptmbind i:preterm, o:preterm.
+pred env i:string, o:cpretype.
 
 ptmbind T1 T2 :-
   (pi V T B \
-     (ptmcopy (absp V T) (lamp V B) :- !,
-        pi v \ (ptmcopy V v :- !) => ptmcopy T (B v)))
-  => ptmcopy T1 T2.
+     ptmcopy (absp V T) (lamp V B) :- !,
+        pi v \ (ptmcopy V v :- !) => ptmcopy T (B v))
+  =>
+  (pi S TY TYS\ 
+     ptmcopy (varp S _) (constp S TY) :- env S TYS, !,
+       refresh-cpretype TYS TY)
+  =>
+  ptmcopy T1 T2.
 
 %% ----------------------------------------------------------------------------
 %% Turning bound HOAS abstractions into nominal abstractions.
@@ -167,7 +174,7 @@ ptmclose [V|Vs] P (ptmfree V B) :-
 % The main predicate: Closure of a pretype.
 pred close-term i:preterm, o:cpreterm.
 
-close-term P T :- ptmbind P Q, ptmvars Q [] Vs, ptmclose Vs Q T.
+close-term P T :- std.do! [ ptmbind P Q, ptmvars Q [] Vs, ptmclose Vs Q T ].
 
 %% ----------------------------------------------------------------------------
 %% Computing the open preterm associated to a cpreterm.
@@ -209,13 +216,9 @@ of-c (ptmfree (varp S _) B) T (ptmfree (varp S Ty) B1) :-
   pi x\
      (pi T\ of x T x :- !, Ty = T) =>
      of-c (B x) T (B1 x).
-
 /*
 elab T R :-
-  (pi S TY TYS\ 
-    ptmcopy (varp S _) (constp S TY) :- hol.env S TYS, refresh-cpretype TYS)
-  =>
-    close-term T TC,
+  close-term T TC,
   ptmvars TC [] VS,
   ptmclose VS TC INPUT,
   of-c INPUT Type OUTPUT, print INTPUT "->" OUTPUT ":" Ty, 
@@ -230,7 +233,7 @@ pred test1 i:(A->prop).
 pred test1ok i:(A->prop).
 
 test1ok P :-
-  print "Test >>>" P, P Ret, !, print "  OK <<<" Result;
+  print "Test >>>" P, P Result, !, print "  OK <<<" Result;
   print "  FAILURE: " P.
 
 test1 P :-
@@ -242,10 +245,11 @@ pred tests i:list any.
 tests [].
 tests [T|Ts] :- test1 T, tests Ts.
 
+macro @dummy :- ptycon "" [].
+
 main :-
   print "Tests start ...",
   test1ok (ptyvars (uty "x") []),
-  test1ok false,
   test1   (ptyvars (sty 1) []),
   test1 (ptyvars (ptycon "y" [uty "x", sty 3]) []),
   test1 (ptyclose [uty "x"] (uty "x")),
@@ -256,6 +260,10 @@ main :-
   test1 (ptmvars (combp (varp "x" (uty "t")) (varp "y" (sty 1))) []),
   test1 (close-term (varp "x" (uty "t"))),
   test1 (close-term (absp (varp "x" (uty "t"))
-                          (combp (varp "x" (uty "t"))
-		      	         (varp "x" (uty "s"))))),
+                          (combp (varp "x" (uty "t")) (varp "x" (uty "s"))))),
+  (env "0" (ptybody (ptycon "num" []))) =>
+    test1 (close-term (absp (varp "x" (uty "t"))
+                             (combp (varp "y" (uty "t"))
+                              (combp (varp "x" (uty "t")) (varp "0" @dummy))))),
+
   print "... tests finished.".

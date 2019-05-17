@@ -12,66 +12,70 @@ type uty      string -> pretype.                     % User type variable
 type ptycon   string -> list pretype -> pretype.     % Type constructor
 type sty      int -> pretype.                        % System type variable
 
+%% ----------------------------------------------------------------------------
+%% The of closed pretypes.
+%% The first argument of ptyfree is for storing the type variable.
+%% ----------------------------------------------------------------------------
+
 kind cpretype type.
 
 type ptybody  pretype -> cpretype.                   % Body
-type allprety pretype ->                             % Type variable binder
-              (pretype -> cpretype) ->
-              cpretype.
+type ptyfree  pretype ->                             % Type variable binder
+                (pretype -> cpretype) -> cpretype.
 
 %% ----------------------------------------------------------------------------
-%% Variables of a pretype.
+%% Copy clauses for the pretype datatype.
 %% ----------------------------------------------------------------------------
 
-pred pretyvars i:pretype, i:list pretype, o:list pretype.
+pred ptycopy i:pretype, o:pretype.
 
-pred pretyvars_list i:list pretype, i:list pretype, o:list pretype.
-
-pretyvars (uty _S as X) Vs Vs :- std.mem Vs X, !.
-pretyvars (uty _S as X) Vs [X|Vs].
-
-pretyvars (sty _S as X) Vs Vs :- std.mem Vs X, !.
-pretyvars (sty _S as X) Vs [X|Vs].
-
-pretyvars (ptycon _S Ts) Vs Ws :- pretyvars_list Ts Vs Ws.
-
-pretyvars_list [] Vs Vs.
-pretyvars_list [T|Ts] Vs Ws :-
-  pretyvars T Vs Us,
-  pretyvars_list Ts Us Ws.
-
-%% -------------------------------------------------------------------------
-%% Closed pretype.
-%% -------------------------------------------------------------------------
-
-% Closed pretype associated to a pretype in a given context.
-pred close-pretype i:list pretype, i:pretype, o:cpretype.
-
-close-pretype [] T (ptybody P) :- copy-prety T P.
-close-pretype [V|Vs] T (allprety V R) :-
-  (pi v\ (copy-prety V v :- !) => close-pretype Vs T (R v)).
-
-pred copy-prety i:pretype, o:pretype.
-
-copy-prety (uty _S as X) X.
-copy-prety (sty _N as X) X.
-copy-prety (ptycon S Ts) (ptycon S Rs) :- std.map Ts copy-prety Rs.
+ptycopy (uty _S as X) X.
+ptycopy (sty _N as X) X.
+ptycopy (ptycon S Ts) (ptycon S Rs) :- std.map Ts ptycopy Rs.
 % since we may put refreshed schemas inside terms and since we copy
 % types attached to constp/typingp and since this predicate is not
 % generative we need to handle the case in which the input is flexible
 % explicitly (`uvar` is a keyword)
-copy-prety (uvar as X) X.
+ptycopy (uvar as X) X.
 
+%% ----------------------------------------------------------------------------
+%% Collecting the type variables occurring in a pretype.
+%% Needed as a preliminary step for computing the cpretype of a pretype.
+%% ----------------------------------------------------------------------------
 
-% Closed pretype associated to a given pretype.
-pred pretype-close i:pretype, o:cpretype.
+pred ptyvars i:pretype, i:list pretype, o:list pretype.
 
-pretype-close P C :-
-  pretyvars P [] Vs,
-  close-pretype Vs P C.
+ptyvars (uty _S as X) Vs Vs :- std.mem Vs X, !.
+ptyvars (uty _S as X) Vs [X|Vs].
+ptyvars (sty _N as X) Vs Vs :- std.mem Vs X, !.
+ptyvars (sty _N as X) Vs [X|Vs].
+ptyvars (ptycon _S Ts) Vs Ws :- ptyvars_list Ts Vs Ws.
+
+pred ptyvars_list i:list pretype, i:list pretype, o:list pretype.
+
+ptyvars_list [] Vs Vs.
+ptyvars_list [T|Ts] Vs Ws :- ptyvars T Vs Us, ptyvars_list Ts Us Ws.
+
+%% ----------------------------------------------------------------------------
+%% Computing the closed pretype (cpretype) associated to a pretype.
+%% ----------------------------------------------------------------------------
+
+% Closure in a given context.
+pred ptyclose i:list pretype, i:pretype, o:cpretype.
+
+ptyclose [] T (ptybody P) :- ptycopy T P.
+ptyclose [V|Vs] T (ptyfree V R) :-
+  (pi v\ (ptycopy V v :- !) => ptyclose Vs T (R v)).
+
+% The main predicate: Closure of a pretype.
+pred close-pretype i:pretype, o:cpretype.
+
+close-pretype P C :- ptyvars P [] Vs, ptyclose Vs P C.
 
 %% ----------------------------------------------------------------------------
 %% The type of preterms.
+%% Notice the two abstractions (absp and lamp).
+%% The first argument of lamp is for storing the variable.
 %% ----------------------------------------------------------------------------
 
 kind preterm type.
@@ -82,84 +86,108 @@ type combp   preterm -> preterm -> preterm.          % Combination
 type typing  preterm -> pretype -> preterm.          % Typing
 type absp    preterm -> preterm -> preterm.          % Abstraction
 type lamp    preterm ->                              % HO Abstraction
-             (preterm -> preterm) ->
-             preterm.
+               (preterm -> preterm) -> preterm.
+
+%% ----------------------------------------------------------------------------
+%% Copy clauses for the preterm datatype.
+%% ----------------------------------------------------------------------------
+
+pred ptmcopy i:preterm, o:preterm.
+
+ptmcopy (varp _ _ as X) X.
+ptmcopy (constp _ _ as X) X.
+ptmcopy (combp X1 Y1) (combp X2 Y2)   :- ptmcopy X1 X2, ptmcopy Y1 Y2.
+ptmcopy (typing X1 T1) (typing X2 T2) :- ptmcopy X1 X2, ptycopy T1 T2.
+ptmcopy (absp V1 X1) (absp V2 X2)     :- ptmcopy V1 V2, ptmcopy X1 X2.
+ptmcopy (lamp V B1) (lamp V B2) :-
+  pi x\ ptmcopy x x => ptmcopy (B1 x) (B2 x).
+ptmcopy (uvar as X) X.
+
+%% ----------------------------------------------------------------------------
+%% The of closed preterms.
+%% The first argument of ptmbind is for storing the variable.
+%% ----------------------------------------------------------------------------
 
 kind cpreterm type.
 
-type tmbody  preterm -> cpreterm.                    % Body
-type tmbind  preterm ->                              % Variable binder
-             (preterm -> cpreterm) ->                %   first arg is a variable
-             cpreterm.
+type ptmbody  preterm -> cpreterm.                    % Body
+type ptmfree  preterm ->                              % Variable binder
+                (preterm -> cpreterm) -> cpreterm.
 
-pred copy-term i:preterm, o:preterm.
-copy-term (varp _ _ as X) X.
-copy-term (constp _ _ as X) X.
-copy-term (combp X1 Y1) (combp X2 Y2) :-
-  copy-term X1 X2,
-  copy-term Y1 Y2.
-copy-term (typing X1 T1) (typing X2 T2) :-
-  copy-term X1 X2,
-  copy-prety T1 T2.
-copy-term (absp V1 X1) (absp V2 X2) :-
-  copy-term V1 V2,
-  copy-term X1 X2.
-copy-term (lamp V B1) (lamp V B2) :-
-  pi x\ copy-term x x => copy-term (B1 x) (B2 x).
-copy-term (uvar as X) X.
+%% ----------------------------------------------------------------------------
+%% Collecting the variables occurring in a preterm.
+%% Needed as a preliminary step for computing the cpreterm of a preterm.
+%% ----------------------------------------------------------------------------
 
-pred bind-term i:preterm, o:preterm.
+pred ptmvars i:preterm, i:list preterm, o:list preterm.
 
-bind-term T1 T2 :-
+ptmvars (varp _ _ as X) Vs Vs :- std.mem Vs X, !.
+ptmvars (varp _ _ as X) Vs [X|Vs].
+ptmvars (combp X Y) Vs Ws :- ptmvars X Vs Us, ptmvars Y Us Ws.
+ptmvars (typing X T_) Vs Ws :- ptmvars X Vs Ws.
+ptmvars (lamp V_ B) Vs Ws :-
+  pi x \ (pi Vs\ ptmvars x Vs Vs) => ptmvars (B x) Vs Ws.
+
+%% ----------------------------------------------------------------------------
+%% Turning nominal abstractions into bound HOAS abstractions.
+%% (That si (absp _ _) into (lamp _ _).
+%% ----------------------------------------------------------------------------
+
+pred ptmbind i:preterm, o:preterm.
+
+ptmbind T1 T2 :-
   (pi V T B \
-     (copy-term (absp V T) (lamp V B) :- !,
-        pi v \ (copy-term V v :- !) => copy-term T (B v)))
-  => copy-term T1 T2.
+     (ptmcopy (absp V T) (lamp V B) :- !,
+        pi v \ (ptmcopy V v :- !) => ptmcopy T (B v)))
+  => ptmcopy T1 T2.
 
-pred unbind-term i:preterm, o:preterm.
+%% ----------------------------------------------------------------------------
+%% Turning bound HOAS abstractions into nominal abstractions.
+%% (That si (absp _ _) into (lamp _ _).
+%% ----------------------------------------------------------------------------
 
-unbind-term T1 T2 :-
+pred ptmunbind i:preterm, o:preterm.
+
+ptmunbind T1 T2 :-
   (pi V T B \
-     (copy-term (lamp V T) (absp V X) :- !, copy-term (T V) X)
-  => copy-term T1 T2.
+     (ptmcopy (lamp V T) (absp V X) :- !, ptmcopy (T V) X))
+  => ptmcopy T1 T2.
 
+%% ----------------------------------------------------------------------------
+%% Computing the closed preterm (type cpreterm) associated to a preterm.
+%% ----------------------------------------------------------------------------
 
-pred tmvars i:preterm, i:list preterm, o:list preterm.
+% Closure in a given context.
+pred ptmclose i:list preterm, i:preterm, o:cpreterm.
 
-tmvars (varp _ _ as X) Vs Vs :- std.mem Vs X, !.
-tmvars (varp _ _ as X) Vs [X|Vs].
-tmvars (combp X Y) Vs Ws :- tmvars X Vs Us, tmvars Y Us Ws.
-tmvars (typing X T_) Vs Ws :- tmvars X Vs Ws.
-tmvars (lamp V_ B) Vs Ws :-
-  pi x \ (pi Vs\ tmvars x Vs Vs) => tmvars (B x) Vs Ws.
+ptmclose [] P (ptmbody Q) :- ptmcopy P Q.
+ptmclose [V|Vs] P (ptmfree V B) :-
+  pi v \ (ptmcopy V v :- !) => ptmclose Vs P (B v).
 
+% The main predicate: Closure of a pretype.
+pred close-term i:preterm, o:cpreterm.
 
-pred term-close i:preterm, o:cpreterm.
+close-term P T :- ptmbind P Q, ptmvars Q [] Vs, ptmclose Vs Q T.
 
-term-close P T :-
-  bind-term P Q,
-  tmvars Q [] Vs,
-  close-term Vs Q T.
-
-pred close-term i:list preterm, i:preterm, o:cpreterm.
-
-close-term [] P (tmbody Q) :- copy-term P Q.
-close-term [V|Vs] P (tmbind V B) :-
-  pi v \ (copy-term V v :- !) => close-term Vs P (B v).
+%% ----------------------------------------------------------------------------
+%% Computing the open preterm associated to a cpreterm.
+%% ----------------------------------------------------------------------------
 
 pred open-term i:cpreterm, o:preterm.
 
-open-term (tmbody X) X.
-open-term (tmbind V B) X :- open-term (B V) X.
+open-term (ptmbody X) X.
+open-term (ptmfree V B) X :- open-term (B V) X.
 
 %% ----------------------------------------------------------------------------
-%% typing
+%% Typing of a preterm.
 %% ----------------------------------------------------------------------------
 
 pred refresh-cpretype i:cpretype, o:pretype.
 
-refresh-cpretype (ptbody T) T.
-refresh-cpretype (allprety _ F) T :- refresh-cpretype (F FRESH_) T.
+refresh-cpretype (ptybody T) T.
+refresh-cpretype (ptyfree _V F) T :- refresh-cpretype (F FRESH_) T.
+
+pred of i:preterm, o:pretype, o:preterm.
 
 of (absp _ _) _ _ :- halt "absp".
 
@@ -174,52 +202,60 @@ of (combp A B) Tgt (combp A1 B1) :-
   of A (ptycon "fun" [Src,Tgt]) A1,
   of B Src B1.
 
-of-c (tmbody X) T (tmbody X1) :- of X T X1.
-of-c (tmbind (varp S _) B) T (tmbind (varp S Ty) B1) :-
+pred of-c i:cpreterm, o:pretype, o:cpreterm.
+
+of-c (ptmbody X) T (ptmbody X1) :- of X T X1.
+of-c (ptmfree (varp S _) B) T (ptmfree (varp S Ty) B1) :-
   pi x\
      (pi T\ of x T x :- !, Ty = T) =>
      of-c (B x) T (B1 x).
 
+/*
 elab T R :-
   (pi S TY TYS\ 
-    copy-term (varp S _) (constp S TY) :- hol.env S TYS, refresh-cpretype TYS)
+    ptmcopy (varp S _) (constp S TY) :- hol.env S TYS, refresh-cpretype TYS)
   =>
-    term-close T TC,
-  tmvars TC [] VS,
-  close-term VS TC INPUT,
+    close-term T TC,
+  ptmvars TC [] VS,
+  ptmclose VS TC INPUT,
   of-c INPUT Type OUTPUT, print INTPUT "->" OUTPUT ":" Ty, 
   open-term OUTPUT R.
-
+*/
 
 %% ----------------------------------------------------------------------------
 %% Some tests.
 %% ----------------------------------------------------------------------------
 
 pred test1 i:(A->prop).
+pred test1ok i:(A->prop).
+
+test1ok P :-
+  print "Test >>>" P, P Ret, !, print "  OK <<<" Result;
+  print "  FAILURE: " P.
 
 test1 P :-
-  print ">>> Test:" P, P Result, !, print "<<< Exit:" Result;
-  print "<<< Fail:" P.
+  print "Test >>>" P, P Result, !, print "     <<<" Result;
+  print "     <<<" P.
 
 pred tests i:list any.
 
-tests [] :- print "... tests finished.".
+tests [].
 tests [T|Ts] :- test1 T, tests Ts.
 
 main :-
-  print "Tests start...",
-  tests
-    [pretyvars (uty "x") [],
-     pretyvars (sty 1) [],
-     pretyvars (ptycon "y" [uty "x", sty 3]) [],
-     close-pretype [uty "x"] (uty "x"),
-     close-pretype [sty 1] (uty "x"),
-     pretype-close (ptycon "fun" [uty "x", sty 1]),
-     bind-term (absp (varp "x" (uty "t")) (varp "x" (uty "t"))),
-     bind-term (absp (varp "x" (sty 0)) (varp "x" (uty "t"))),
-     tmvars (combp (varp "x" (uty "t")) (varp "y" (sty 1))) [],
-     term-close (varp "x" (uty "t")),
-     term-close (absp (varp "x" (uty "t"))
-                      (combp (varp "x" (uty "t"))
-		      	     (varp "x" (uty "s"))))
-    ].
+  print "Tests start ...",
+  test1ok (ptyvars (uty "x") []),
+  test1ok false,
+  test1   (ptyvars (sty 1) []),
+  test1 (ptyvars (ptycon "y" [uty "x", sty 3]) []),
+  test1 (ptyclose [uty "x"] (uty "x")),
+  test1 (ptyclose [sty 1] (uty "x")),
+  test1 (close-pretype (ptycon "fun" [uty "x", sty 1])),
+  test1 (ptmbind (absp (varp "x" (uty "t")) (varp "x" (uty "t")))),
+  test1 (ptmbind (absp (varp "x" (sty 0)) (varp "x" (uty "t")))),
+  test1 (ptmvars (combp (varp "x" (uty "t")) (varp "y" (sty 1))) []),
+  test1 (close-term (varp "x" (uty "t"))),
+  test1 (close-term (absp (varp "x" (uty "t"))
+                          (combp (varp "x" (uty "t"))
+		      	         (varp "x" (uty "s"))))),
+  print "... tests finished.".

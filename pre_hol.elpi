@@ -140,8 +140,12 @@ pred ptmbind i:preterm, o:preterm.
 pred env i:string, o:cpretype.
 
 ptmbind T1 T2 :-
-  (pi V T B \
-     ptmcopy (absp V T) (lamp V B) :- !,
+  (pi V T B FRESH\
+     ptmcopy (absp (varp S _ as V) T) (lamp (varp S FRESH) B) :- !,
+        pi v \ (ptmcopy V v :- !) => ptmcopy T (B v))
+  =>
+  (pi V T B S VT\
+     ptmcopy (absp (typing (varp S _ as V) VT) T) (lamp (varp S VT) B) :- !,
         pi v \ (ptmcopy V v :- !) => ptmcopy T (B v))
   =>
   (pi S TY TYS\ 
@@ -200,9 +204,11 @@ pred of i:preterm, o:pretype, o:preterm.
 
 of (absp _ _) _ _ :- halt "absp".
 
+of (typing T TY) TY R :- of T TY R.
+
 of (constp S TY) TY (constp S TY).
 
-of (lamp (varp S _) F) (ptycon "fun" [Src,Tgt]) (lamp (varp S Src) F1) :-
+of (lamp (varp S Src) F) (ptycon "fun" [Src,Tgt]) (lamp (varp S Src) F1) :-
   pi x\
      (pi T\ of x T x :- !, T = Src) =>
      of (F x) Tgt (F1 x).

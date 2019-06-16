@@ -1,3 +1,4 @@
+/*
 % terms %%%%%%%%%%%%%%%%
 
 kind term type. % a preterm actually
@@ -149,7 +150,7 @@ find-or-add (uvar as L) S (varb S T) :- L = [(varb S T)|FRESH_].
 elab X Y :-
   free-vars L => of X T Y,
   print "elab" X "->\n" L "|-" Y ":" T.
-
+*/
 pred self-test.
 
 self-test :-
@@ -157,7 +158,7 @@ self-test :-
   print {hol.term->string (lam (varb "x" _) (varb "x" _))},
 
   print "test2",
-  print {hol.ty->string (tyapp "num" [])},
+  print {hol.ty->string (ptycon "num" [])},
   
   print "test3",
   hol.interface "+" L,
@@ -166,7 +167,7 @@ self-test :-
   hol.interface "whatever" [],
   
   print "test4",
-  print "int_min : " {hol.tys->string {hol.env "int_min"}},
+  print "int_min : " {hol.ty->string {hol.env "int_min"}},
   not (hol.env "whatever" _),
 
   print "test5",!,
@@ -177,14 +178,14 @@ self-test :-
   print "test6",!,
   print {{\x : num. x}} ":" {{: num -> num}},
   
-  print "test7",
-  of {{ 0 : real }} _ R, print {hol.term->string R},
+  %print "test7",
+  %of {{ 0 : real }} _ R, print {hol.term->string R},
   
   %print "test8",!,
   %of {{ [] : real}} _ F, print {hol.term->string F},
   
-  print "test9",!,
-  hol.rule.refl {of {{0}} _} Thm, print Thm,
+  %print "test9",!,
+  %hol.rule.refl {of {{0}} _} Thm, print Thm,
 
   print "test10",!,
   hol.coercions Cs, print Cs.

@@ -175,7 +175,6 @@ type std_in @in_stream.
 macro @out_stream :- ctype "out_stream".
 
 type std_out @out_stream.
-
 type std_err @out_stream.
 
 % [open_in FileName InStream] opens FileName for input
@@ -320,6 +319,7 @@ external pred new_int o:int.
 
 % Holds data across bracktracking
 macro @safe :- ctype "safe".
+
 
 % [new_safe Safe] creates a safe: a store that persists across backtracking
 external pred new_safe o:@safe.
@@ -498,10 +498,16 @@ pred lookup! i:list (pair A B), i:A, o:B.
 lookup! [pr X Y|_] X Y :- !.
 lookup! [_|LS]       X Y :- lookup! LS X Y.
 
-% [mem L X] succeeds once if X occurs inside L 
-pred mem i:list A, i:A.
-mem [X|_] X :- !.
+% [mem! L X] succeeds once if X occurs inside L 
+pred mem! i:list A, o:A.
+mem! [X|_] X :- !.
+mem! [_|L] X :- mem! L X.
+
+% [mem L X] succeeds every time if X occurs inside L 
+pred mem i:list A, o:A.
+mem [X|_] X.
 mem [_|L] X :- mem L X.
+
 
 pred exists i:list A, i:(A -> prop).
 exists [X|_] P :- P X.
@@ -571,27 +577,27 @@ any->string X Y :- term_to_string X Y.
 
 % ========================== HOL-Light ===========================
 
+% The algebraic data type of pretypes
+kind pretype type.
+type uty string -> pretype. % User type variable
+type ptycon string -> list pretype -> pretype. % Type constructor
+type sty int -> pretype. % System type variable
+
 % -------------------- environment -----------------------------
 
 external pred hol.env % lookup the type of known constant
   i:string, % constant name
-  o:tys.    % constant type
+  o:pretype.
+   % constant type
   
 external pred hol.interface % lookup the interpretations of overloaded constant
   i:string, % constant overloaded name
-  o:list (pair string ty).
+  o:list (pair string pretype).
    % constant name and type
   
 external pred hol.pmk_numeral % when the given string is a numeral it outputs its preterm
   i:string, % possibly a numeral
   o:term.   % the number
-  
-% HOL-light coercion
-kind coercion type.
-type coercion string -> tys -> term -> coercion.
-
-external pred hol.coercions % TODO commento
-  o:list coercion. % coercions
   
 % -------------------- printing -----------------------------
 
@@ -599,15 +605,13 @@ external pred hol.coercions % TODO commento
 external pred hol.term->string i:term, o:string.
 
 % [hol.ty->string Ty S] typechecks Ty and prints it to S
-external pred hol.ty->string i:ty, o:string.
-
-% [hol.tys->string Tys S] typechecks Tys and prints it to S
-external pred hol.tys->string i:tys, o:string.
+external pred hol.ty->string i:pretype, o:string.
 
 % -------------------- kernel rules ----------------------------
 
-% HOL proof evidence
-macro @thm :- ctype "Hol.thm".
+% The opaque witness of a theorem
+macro @thm :- ctype "thm".
+
 
 % [hol.rule.refl X P] P is a proof of X = X
 external pred hol.rule.refl i:term, o:@thm.
@@ -622,8 +626,9 @@ type hyp string -> term -> @thm -> hyp.
 kind goal type.
 type goal list hyp -> term -> goal.
 
-% HOL tactic justification
-macro @just :- ctype "Hol.justification".
+% A proof step implemented in ML
+macro @just :- ctype "just".
+
 
 % Elpi tactic justification
 kind justification type.

@@ -270,7 +270,7 @@ external pred rex_match i:string, i:string.
 external pred rex_replace i:string, i:string, i:string, o:string.
 
 % [quote_syntax FileName QueryText QuotedProgram QuotedQuery] quotes the
-% program from FileName and the QueryText. See elpi_quoted_syntax.elpi for
+% program from FileName and the QueryText. See elpi-quoted_syntax.elpi for
 % the syntax tree
 external pred quote_syntax i:string, i:string, o:list A, o:A.
 
@@ -597,12 +597,13 @@ external pred hol.interface % lookup the interpretations of overloaded constant
   
 external pred hol.pmk_numeral % when the given string is a numeral it outputs its preterm
   i:string, % possibly a numeral
-  o:term.   % the number
+  o:preterm.
+   % the number
   
 % -------------------- printing -----------------------------
 
 % [hol.term->string T S] typechecks T and prints it to S
-external pred hol.term->string i:term, o:string.
+external pred hol.term->string i:preterm, o:string.
 
 % [hol.ty->string Ty S] typechecks Ty and prints it to S
 external pred hol.ty->string i:pretype, o:string.
@@ -614,17 +615,17 @@ macro @thm :- ctype "thm".
 
 
 % [hol.rule.refl X P] P is a proof of X = X
-external pred hol.rule.refl i:term, o:@thm.
+external pred hol.rule.refl i:preterm, o:@thm.
 
 % -------------------- tactics ----------------------------
 
 % HOL-light hypothesis
 kind hyp type.
-type hyp string -> term -> @thm -> hyp.
+type hyp string -> preterm -> @thm -> hyp.
 
 % HOL-light goal
 kind goal type.
-type goal list hyp -> term -> goal.
+type goal list hyp -> preterm -> goal.
 
 % A proof step implemented in ML
 macro @just :- ctype "just".

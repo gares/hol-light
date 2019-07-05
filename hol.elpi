@@ -1,3 +1,8 @@
+
+env S CT :-
+  hol.env S T, close-pretype T CT.
+
+
 /*
 % terms %%%%%%%%%%%%%%%%
 
@@ -149,8 +154,8 @@ find-or-add (uvar as L) S (varb S T) :- L = [(varb S T)|FRESH_].
 
 elab X Y :-
   free-vars L => of X T Y,
-  print "elab" X "->\n" L "|-" Y ":" T.
-*/
+  print "elab" X "->" L "|-" Y ":" T.
+
 pred self-test.
 
 self-test :-
@@ -192,6 +197,7 @@ self-test :-
 
 % library %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+
 pred map-pr i:(A -> B -> prop), i:(C -> D -> prop), i:pair A C, o:pair B D.
 
 map-pr F G (pr A B) (pr A1 B1) :- F A A1, G B B1.
@@ -224,6 +230,7 @@ step G GL J :-
   hol.tac.ap_term_tac G [SG] J1,
   hol.tac.ap_term_tac SG GL J2,
   J = japp J1 J2.
+*/
 
 /*
 prove [p X (d X) |..] [not(p X) (d Y)|..] (r X=Y) :-...

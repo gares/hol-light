@@ -5,11 +5,11 @@ needs "pre_elpi.ml";;
 unset_jrh_lexer;;
 
 let () = Quotation.add "elp" (Quotation.ExStr (fun _ s ->
-  "Elpi.quotation \""^String.escaped s^"\""));;
+  "Hol_elpi.quotation \""^String.escaped s^"\""));;
   
 set_jrh_lexer;;
 
-module Elpi : sig
+module Hol_elpi : sig
 
   type elpi_code
 
@@ -39,11 +39,11 @@ end = struct
 
   unset_jrh_lexer;;
 
-  open Elpi_API;;
+  open Elpi.API;;
 
   (* TODO: move to an utils module *)
   let readback_string ~depth t =
-    match RawData.look ~depth t with
+    match Elpi.API.RawData.look ~depth t with
     | CData c when RawOpaqueData.is_string c -> RawOpaqueData.to_string c
     | _ -> Utils.type_error "readback_string"
   ;;
@@ -114,7 +114,42 @@ end = struct
   end
 
 (* --------------------------------------------------------------------- *)
-  module Hol_preterm : sig
+
+ module Hol_preterm : sig
+
+    val t : preterm Conversion.t
+    val elpi_string_of_preterm : preterm -> string
+
+  end = struct
+
+    open BuiltInPredicate;;
+    let elpi_string_of_preterm x = string_of_term (unsafe_term_of_preterm x);;
+
+    let t = AlgebraicData.declare {
+      ty = TyName "preterm";
+      doc = "The algebraic data type of preterms";
+      pp = (fun fmt t -> Format.fprintf fmt "%s" (elpi_string_of_preterm t));
+      constructors = [
+        K("varp","Variable",A(BuiltInData.string,A(Hol_pretype.t,N)),
+           B (fun s ty -> Varp(s,ty)),
+           M (fun ~ok ~ko -> function Varp(s,ty) -> ok s ty | _ -> ko ()));
+        K("constp","Constant",A(BuiltInData.string,A(Hol_pretype.t, N)),
+           B (fun s ty -> Constp(s,ty)),
+           M (fun ~ok ~ko -> function Constp(s,ty) -> ok s ty | _ -> ko ()));
+        K("combp","Combination",S (S N),
+           B (fun hd a -> Combp(hd,a)),
+           M (fun ~ok ~ko -> function Combp(hd,a) -> ok hd a | _ -> ko ()));
+        K("typing","Typing",S (A(Hol_pretype.t,N)),
+           B (fun t ty -> Typing(t,ty)),
+           M (fun ~ok ~ko -> function Typing(t,ty) -> ok t ty | _ -> ko ()));
+        K("absp","Abstraction",S (S N),
+           B (fun v b -> Absp(v,b)),
+           M (fun ~ok ~ko -> function Absp(v,b) -> ok v b | _ -> ko ()));
+      ]
+    }
+
+  end
+  module Hol_pretermOLD : sig
 
     val t : preterm Conversion.t
     val elpi_string_of_preterm : preterm -> string
@@ -141,7 +176,7 @@ end = struct
     let rec aux state t =
       match t with
       | Varp(" elpi ",Ptycon(text,[])) ->
-          Quotation.lp ~depth state (Elpi_API.Ast.Loc.initial "(antiquotation") text
+          Quotation.lp ~depth state (Elpi.API.Ast.Loc.initial "(antiquotation") text
       | Varp(s,ty) ->
           let state, ty = embed_ty state ty in
           state, mk_var s ty
@@ -171,19 +206,19 @@ end = struct
     let rec aux state t =
       match RawData.look ~depth t with
       | App(c,s,[ty]) when c == varc ->
-          let state, ty = readback_ty state ty in
-          state, Varp(readback_string ~depth s,ty)
+          let state, ty, gl = readback_ty state ty in
+          state, Varp(readback_string ~depth s,ty), gl
       | App(c,s,[ty]) when c == constc ->
-          let state, ty = readback_ty state ty in
-          state, Constp(readback_string ~depth s,ty)
+          let state, ty, gl = readback_ty state ty in
+          state, Constp(readback_string ~depth s,ty), gl
       | App(c,t1,[t2]) when c == appc ->
-          let state, t1 = aux state t1 in
-          let state, t2 = aux state t2 in
-          state, Combp(t1, t2)
+          let state, t1, gl1 = aux state t1 in
+          let state, t2, gl2 = aux state t2 in
+          state, Combp(t1, t2), gl1 @ gl2
       | App(c,t1,[t2]) when c == lamc ->
-          let state, t1 = aux state t1 in
-          let state, t2 = aux state t2 in
-          state, Absp(t1, t2)
+          let state, t1, gl1 = aux state t1 in
+          let state, t2, gl2 = aux state t2 in
+          state, Absp(t1, t2), gl1 @ gl2
       | App(c,_,_) when c == typingc ->
           assert false
       | _ -> Utils.type_error ("readback_preterm: " ^ RawPp.Debug.show_term t)
@@ -431,7 +466,7 @@ end
 
     MLCode (Pred("hol.interface",
       In(BuiltInData.string,"constant overloaded name",
-      Out(BuiltInData.list (Elpi_builtin.pair BuiltInData.string Hol_pretype.t), "constant name and type",
+      Out(BuiltInData.list (Elpi.Builtin.pair BuiltInData.string Hol_pretype.t), "constant name and type",
       Easy("lookup the interpretations of overloaded constant"))),
     (fun name _ ~depth ->
        let l = mapfilter (fun (x,(s,t)) ->
@@ -558,7 +593,7 @@ end
   let header, _ =
     let elpi_flags =
       try
-        let ic, _ as p = Unix.open_process "elpi -where 2>/dev/null" in
+        let ic, _ as p = Unix.open_process "ocamlfind query elpi 2>/dev/null" in
         let w = input_line ic in
         let _ = Unix.close_process p in ["-I";w]
       with _ -> [] in
@@ -566,7 +601,7 @@ end
     Setup.set_anomaly (fun ?loc:_ s -> failwith ("Elpi: anomaly: " ^ s));
     Setup.set_type_error (fun ?loc:_ s -> failwith ("Elpi: type error: " ^ s));
     let builtins_doc_file = "hol-builtin.elpi" in
-    let builtins = Elpi_builtin.std_declarations @ Builtins.declarations in
+    let builtins = Elpi.Builtin.std_declarations @ Builtins.declarations in
     let fmt = Format.formatter_of_out_channel (open_out builtins_doc_file) in
     BuiltIn.document fmt builtins;
     Setup.init
@@ -574,17 +609,17 @@ end
       ~basedir:(Sys.getcwd ()) elpi_flags
   ;;
 
-  type elpi_code = Compile.program
+  type elpi_code = Elpi.API.Compile.program
 
   let files fl : elpi_code =
     try
       let p = Parse.program fl in
       Compile.program ~flags:Compile.default_flags header [p]
     with Parse.ParseError(loc,msg) ->
-      failwith ("elpi: " ^ Elpi_API.Ast.Loc.show loc ^ ": " ^ msg)
+      failwith ("elpi: " ^ Elpi.API.Ast.Loc.show loc ^ ": " ^ msg)
   ;;
 
-  let hol () = files ["hol.elpi"];;
+  let hol () = files ["pre_hol.elpi"; "hol.elpi"];;
 
   type debug = On of string list | Off
 
@@ -695,9 +730,10 @@ end
 end
 
 (* little test *)
-let () = Elpi.query (Elpi.hol ()) "self-test";;
+let () = Hol_elpi.(query (hol ()) "main");;
 
-let _ : thm = prove (`0 = 0`, Elpi.prove_tac)
+let _ : thm = prove (`0 = 0`, Hol_elpi.prove_tac)
+
 
 (* Antiquotation *)
 let () = reserve_words ["^"];;

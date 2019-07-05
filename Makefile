@@ -164,6 +164,7 @@ merlin:
 	$(call build,drule.ml)
 	$(call build,tactics.ml)
 	$(call build,pre_elpi.ml)
+	$(call build,hol_elpi.ml)
 
 run:
 	readline-editor -- ocaml -I `camlp5 -where`

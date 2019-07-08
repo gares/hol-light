@@ -137,7 +137,7 @@ ptmvars (lamp V_ B) Vs Ws :-
 %% ----------------------------------------------------------------------------
 
 pred ptmbind i:preterm, o:preterm.
-pred env i:string, o:cpretype.
+pred env i:string, o:string, o:cpretype. % env S S1 T resolve S as S1 : T
 pred numeral i:string, o:preterm.
 
 ptmbind T1 T2 :-
@@ -149,9 +149,8 @@ ptmbind T1 T2 :-
      ptmcopy (absp (typing (varp S _ as V) VT) T) (lamp (varp S VT) B) :- !,
         pi v \ (ptmcopy V v :- !) => ptmcopy T (B v))
   =>
-  (pi S TY TYS\ 
-     ptmcopy (varp S _) (constp S TY) :- env S TYS, !,
-       refresh-cpretype TYS TY)
+  (pi S TY\ 
+     ptmcopy (varp S TY) (constp S TY) :- (env S _ _; overload S _ _), !)
   =>
   (pi S N\ 
      ptmcopy (varp S _) N :- numeral S N, !)
@@ -184,7 +183,7 @@ ptmclose [V|Vs] P (ptmfree V B) :-
 % The main predicate: Closure of a pretype.
 pred close-term i:preterm, o:cpreterm.
 
-close-term P T :- std.do! [ ptmbind P Q, ptmvars Q [] Vs, ptmclose Vs Q T ].
+close-term P T :- ptmbind P Q, ptmvars Q [] Vs, ptmclose Vs Q T, !.
 
 %% ----------------------------------------------------------------------------
 %% Computing the open preterm associated to a cpreterm.
@@ -204,13 +203,16 @@ pred refresh-cpretype i:cpretype, o:pretype.
 refresh-cpretype (ptybody T) T.
 refresh-cpretype (ptyfree _V F) T :- refresh-cpretype (F FRESH_) T.
 
+ 
+pred overload i:string, o:string, o:cpretype. % env S S1 T resolve S as S1 : T
 pred of i:preterm, o:pretype, o:preterm.
 
 of (absp _ _) _ _ :- halt "absp".
 
 of (typing T TY) TY R :- of T TY R.
 
-of (constp S TY) TY (constp S TY).
+of (constp S _) TY (constp S1 TY) :- overload S S1 CTY, refresh-cpretype CTY TY.
+of (constp S _) TY (constp S TY) :- env S S CTY, refresh-cpretype CTY TY.
 
 of (lamp (varp S Src) F) (ptycon "fun" [Src,Tgt]) (lamp (varp S Src) F1) :-
   pi x\
@@ -221,10 +223,13 @@ of (combp A B) Tgt (combp A1 B1) :-
   of A (ptycon "fun" [Src,Tgt]) A1,
   of B Src B1.
 
-pred of-loop. 
-
-of PTM TY TM :- not (var TY), not of-loop,
-  of-loop => of PTM TY1 TM1,
+pred of-loop i:preterm. 
+/*
+of PTM TY TM :- var TY, declare_constraint (of PTM TY TM) [TY].
+*/
+of PTM TY TM :- /*not (var TY),*/ not (of-loop PTM),
+  of-loop PTM => of PTM TY1 TM1, !,
+  /*not(TY = TY1),*/
   coercions Coercions,
   mem Coercions (coercion S TS),
   refresh-cpretype TS (ptycon "fun" [TY1, TYm]),
@@ -253,12 +258,13 @@ of-c (ptmfree (varp S _) B) T (ptmfree (varp S Ty) B1) :-
 
 pred elab i:preterm, o:preterm.
 
-elab T R :- std.do! [
+elab T R :- 
   close-term T TC,
+  print T "-c->" TC,
   of-c TC Type ETC,
-  print T "-c->" TC "-e->" ETC ":" Type, 
+  print TC "-e->" ETC ":" Type, 
   open-term ETC R
-].
+.
 
 %% ----------------------------------------------------------------------------
 %% Tactics.
@@ -304,23 +310,23 @@ main :-
   test1 (close-term (varp "x" (uty "t"))),
   test1 (close-term (absp (varp "x" (uty "t"))
                           (combp (varp "x" (uty "t")) (varp "x" (uty "s"))))),
-  (env "0" (ptybody (ptycon "num" []))) =>
+  (env "0" "0" (ptybody (ptycon "num" []))) =>
     test1 (close-term (absp (varp "x" (uty "t"))
                              (combp (varp "y" (uty "t"))
                               (combp (varp "x" (uty "t")) (varp "0" @dummy))))),
-  (env "0" (ptybody (ptycon "num" []))) =>
+  (env "0" "0" (ptybody (ptycon "num" []))) =>
     test1 (elab (absp (varp "x" (uty "t"))
                              (combp (varp "y" (uty "t"))
                               (combp (varp "x" (uty "t")) (varp "0" @dummy))))),
-  (env "0" (ptybody (ptycon "num" []))) =>
+  (env "0" "0" (ptybody (ptycon "num" []))) =>
   (env "real_of_num" (ptybody (@fun [@con "num", @con "real"]))) =>
   (coercions [coercion "real_of_num" (ptybody (@fun [@con "num", @con "real"]))]) =>
     test1 (elab (absp (typing (varp "x" (uty "t")) (@fun [@con "real", @con "bool"]))
                              (combp (varp "y" (uty "t"))
                               (combp (varp "x" (uty "t")) (varp "0" @dummy))))),
- (env "0" (ptybody (ptycon "num" []))) =>
- (env "real_of_num" (ptybody (@fun [@con "num", @con "real"]))) =>
- (env "complex_of_real" (ptybody (@fun [@con "real", @con "complex"]))) =>
+ (env "0" "0" (ptybody (ptycon "num" []))) =>
+ (env "real_of_num" "real_of_num" (ptybody (@fun [@con "num", @con "real"]))) =>
+ (env "complex_of_real" "complex_of_real" (ptybody (@fun [@con "real", @con "complex"]))) =>
 
   (coercions [coercion "real_of_num"     (ptybody (@fun [@con "num",  @con "real"])),
               coercion "complex_of_real" (ptybody (@fun [@con "real", @con "complex"]))

@@ -463,7 +463,7 @@ end
   let debug = function
    | On preds ->
       let std_opts = [
-        "-trace-on";"-trace-at";"run";"1";"999";
+        "-trace-on";"-trace-at";"run";"1";"999999";
         "-trace-only";"run";"-trace-only";"assign";"-trace-only";"select"] in
       let only_preds =
         List.flatten (List.map (fun p -> ["-trace-only-pred";p]) preds) in
@@ -565,11 +565,11 @@ end
 
 end
 
-(* little test *)
+(* little test 
 let () = Hol_elpi.(query (hol ()) "main");;
 
 let _ : thm = prove (`0 = 0`, Hol_elpi.prove_tac)
-
+*)
 (* Antiquotation *)
 let () = reserve_words ["^"];;
 let () = install_parser ("elpi",(function

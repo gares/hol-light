@@ -1,6 +1,19 @@
 
-env S CT :-
+
+overload S S1 CT :-
+  hol.interface S L,
+  resolve-overload L S1 CT,
+  print "overloading" S "->" S1.
+
+env S S CT :-
   hol.env S T, close-pretype T CT.
+
+pred resolve-overload i:(list (pair string pretype)), o:string, o:cpretype.
+
+resolve-overload [pr S T|_] S CT :-
+  close-pretype T CT.
+
+resolve-overload [_|REST] S CT :- resolve-overload REST S CT.
 
 numeral S N :-
   hol.pmk_numeral S N.

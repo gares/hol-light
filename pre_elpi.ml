@@ -33,9 +33,9 @@ let print_hide_coercions fmt tm =
 (* Minimal set of coercions.                                                 *)
 (* ------------------------------------------------------------------------- *)
 
-add_coercion `real_of_num`;;
+(*add_coercion `real_of_num`;;*)
 add_coercion `int_of_num`;;
-
+add_coercion `real_of_int`;;
 (* ------------------------------------------------------------------------- *)
 (* Install the parser.                                                       *)
 (* ------------------------------------------------------------------------- *)

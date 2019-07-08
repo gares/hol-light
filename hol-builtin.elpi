@@ -608,6 +608,9 @@ external pred hol.pmk_numeral % when the given string is a numeral it outputs it
   o:preterm.
    % the number
   
+external pred hol.coercions % Fetches the list of coercions
+  o:list (pair string pretype). % coercions
+  
 % -------------------- printing -----------------------------
 
 % [hol.term->string T S] typechecks T and prints it to S

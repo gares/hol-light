@@ -5,6 +5,14 @@ env S CT :-
 numeral S N :-
   hol.pmk_numeral S N.
 
+coercions L :-
+  hol.coercions C,
+  std.map C close-coercion L.
+
+pred close-coercion i:(pair string pretype), o:coercion.
+close-coercion (pr S T) (coercion S CT) :-
+  close-pretype T CT.
+
 prove (combp (combp (constp "=" _) X) X) Thm :-
   hol.rule.refl X Thm.
 

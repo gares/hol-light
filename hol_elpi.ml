@@ -167,39 +167,6 @@ end = struct
     st, t)
   ;;
 
-(*)
-module Coercion = struct
-
-  type coercion = {
-    name : string;
-    type_sch : hol_type list * hol_type;
-    constant : preterm
-  }
-
-  let coercion_adt = {
-    Conversion.ADT.ty = TyName "coercion";
-    doc = "HOL-light coercion";
-    constructors = [
-      K("coercion",
-        "",
-        (A(Conversion.string,
-	 A(Hol_type_schema.t,
-         A(Hol_preterm.t,
-	 N)))),
-        (fun s ty ctm ->
-	   { name = s;
-	     type_sch = ty;
-	     constant = ctm
-	   }),
-        (fun ~ok ~ko ->
-           function { name = s; type_sch = ty; constant = ctm } -> ok s ty ctm))
-    ]
-  }
-
-  let t = Conversion.adt coercion_adt
-
-end
-*)
 
 (* ======================= abstract data types ====================== *)
 
@@ -359,22 +326,14 @@ end
        if can num_of_string str then !: (pmk_numeral (num_of_string str))
        else raise No_clause)),
     DocNext);
-(*)
-    MLADT Coercion.coercion_adt;
 
     MLCode (Pred("hol.coercions",
-      Out(list Coercion.t, "coercions",
-        Easy("TODO commento")),
+      Out(BuiltInData.list (Elpi.Builtin.pair BuiltInData.string Hol_pretype.t), "coercions",
+        Easy("Fetches the list of coercions")),
       (fun _ ~depth ->
-         let l = map (fun (s,(ty,ctm)) ->
-                        { Coercion.name = s;
-			  type_sch = (tyvars ty,ty);
-                          constant = preterm_of_term ctm
-                        })
-                     !the_coercions in
-         !: l)),
+         !: (map (fun (s,(ty,_)) -> s, pretype_of_type ty) !the_coercions))),
       DocNext);
-*)
+
     LPDoc "-------------------- printing -----------------------------";
 
     MLCode (Pred("hol.term->string",

@@ -495,14 +495,15 @@ end
         Format.printf "Timeout\n"
   ;;
 
-  let run_predicate ?max_steps program query =
+  let run_predicate ?(typecheck=true) ?max_steps program query =
     let q = Query.compile program (Ast.Loc.initial "(run_predicate)") query in
 
     (* We disable traces when we typecheck the elpi code (Elpi's type checker
        is an elpi program too) *)
     let are_we_debugging = !debugging in
     Setup.trace [];
-    static_check header q;
+    if typecheck then
+      ignore(static_check header q);
     debug are_we_debugging;
 
     let exe = Compile.link q in
@@ -542,7 +543,7 @@ end
 
   (* This runs the elpi query requesting the elaboration of a given term *)
   let elaborate p =
-    let elab_p, _ = run_predicate (hol ())
+    let elab_p, _ = run_predicate ~typecheck:false (hol ())
       (Query.Query {
         predicate = "elab";
         arguments = D(Hol_preterm.t,p,
@@ -568,7 +569,6 @@ end
 let () = Hol_elpi.(query (hol ()) "main");;
 
 let _ : thm = prove (`0 = 0`, Hol_elpi.prove_tac)
-
 
 (* Antiquotation *)
 let () = reserve_words ["^"];;

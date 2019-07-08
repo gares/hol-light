@@ -149,96 +149,7 @@ end = struct
     }
 
   end
-  module Hol_pretermOLD : sig
-
-    val t : preterm Conversion.t
-    val elpi_string_of_preterm : preterm -> string
-
-  end = struct
-
-  let appc = RawData.Constants.from_stringc "app"
-  let varc = RawData.Constants.from_stringc "varb"
-  let lamc = RawData.Constants.from_stringc "lam"
-  let typingc = RawData.Constants.from_stringc "typing"
-  let constc = RawData.Constants.from_stringc "const"
-
-  let mk_app t1 t2 = RawData.mkApp appc t1 [t2];;
-  let mk_var s ty = RawData.mkApp varc (RawOpaqueData.of_string s) [ty];;
-  let mk_lam t1 t2 = RawData.mkApp lamc t1 [t2];;
-  let mk_typing t ty = RawData.mkApp typingc t [ty];;
-  let mk_const s ty = RawData.mkApp constc (RawOpaqueData.of_string s) [ty];;
-
-
-  let embed ~depth hyps constraints state t =
-    let embed_ty s t =
-      let s, t, _ = Hol_pretype.t.Conversion.embed ~depth hyps constraints s t in
-      s, t in
-    let rec aux state t =
-      match t with
-      | Varp(" elpi ",Ptycon(text,[])) ->
-          Quotation.lp ~depth state (Elpi.API.Ast.Loc.initial "(antiquotation") text
-      | Varp(s,ty) ->
-          let state, ty = embed_ty state ty in
-          state, mk_var s ty
-      | Constp (s,ty) ->
-          let state, ty = embed_ty state ty in
-          state, mk_const s ty
-      | Combp(t1,t2) ->
-          let state, t1 = aux state t1 in
-          let state, t2 = aux state t2 in
-          state, mk_app t1 t2
-      | Absp(t1,t2) ->
-          let state, t1 = aux state t1 in
-          let state, t2 = aux state t2 in
-          state, mk_lam t1 t2
-      | Typing(t,ty) ->
-          let state, ty = embed_ty state ty in
-          let state, t = aux state t in
-          state, mk_typing t ty
-     in
-    let state, t = aux state t in
-    state, t, []
-  ;;
-
-  let readback ~depth hyps constraints state t =
-    let readback_ty state ty =
-      Hol_pretype.t.Conversion.readback ~depth hyps constraints state ty in
-    let rec aux state t =
-      match RawData.look ~depth t with
-      | App(c,s,[ty]) when c == varc ->
-          let state, ty, gl = readback_ty state ty in
-          state, Varp(readback_string ~depth s,ty), gl
-      | App(c,s,[ty]) when c == constc ->
-          let state, ty, gl = readback_ty state ty in
-          state, Constp(readback_string ~depth s,ty), gl
-      | App(c,t1,[t2]) when c == appc ->
-          let state, t1, gl1 = aux state t1 in
-          let state, t2, gl2 = aux state t2 in
-          state, Combp(t1, t2), gl1 @ gl2
-      | App(c,t1,[t2]) when c == lamc ->
-          let state, t1, gl1 = aux state t1 in
-          let state, t2, gl2 = aux state t2 in
-          state, Absp(t1, t2), gl1 @ gl2
-      | App(c,_,_) when c == typingc ->
-          assert false
-      | _ -> Utils.type_error ("readback_preterm: " ^ RawPp.Debug.show_term t)
-    in
-      aux state t
-  ;;
-
-  open BuiltInPredicate;;
-  let elpi_string_of_preterm x = string_of_term (unsafe_term_of_preterm x);;
-
-  let t : preterm Conversion.t = {
-    ty = TyName "term";
-    pp_doc = (fun fmt () -> Format.fprintf fmt "Preterm.preterm");
-    pp = (fun fmt t -> Format.fprintf fmt "%s" (elpi_string_of_preterm t));
-    embed = embed;
-    readback = readback;
-  }
-
-  end
-
+  
   (* ========================== quotations ========================== *)
 
   let () = Quotation.set_default_quotation (fun ~depth st loc txt ->
@@ -386,42 +297,6 @@ let rec interp_j = function
   | JStop -> (function [t] -> t | _ -> assert false)
 
 end
-
-
-(*
-  let sequentc = E.Data.RawData.Constants.from_stringc "sequent"
-  ;;
-
-  let embed_thm ~depth _ { E.Data.state = s } thm =
-    let hyps, concl = dest_thm thm in
-    s, mkApp sequentc
-      (E.Utils.list_to_lp_list (List.map (embed_term ~depth []) hyps))
-      [embed_term ~depth [] concl; mkCData (thm_cd.E.CData.cin thm)]
-  ;;
-
-  MLTAC( IN(term,OUT(thm))
-
-  match look ~depth p with
-  | App(c,t,[]) when c == arithc -> ARITH_RULE (readback_term t)
-
-
-
-  let readback_thm ~depth hyps { E.Data.state = s } t =
-    match look ~depth t with
-    | (UVar _ | AppUVar _) -> s, Conversion.Flex t
-    | Discard -> s, Conversion.Discard
-    | App(c,hyps,[concl]) when c == sequentc ->
-        assert false
-    | _ -> type_error "readback_thm"
-  ;;
-
-  let sequent : thm Conversion.data = {
-    Conversion.ty = "thm";
-    to_term = embed_thm;
-    of_term = readback_thm;
-  }
-  ;;
-  *)
 
 
   module Builtins = struct

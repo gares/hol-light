@@ -434,6 +434,7 @@ end
     LPDoc "========================== HOL-Light ===========================";
 
     MLData Hol_pretype.t;
+    MLData Hol_preterm.t;
 
 (*
     MLCode (Pred("hol.thm",

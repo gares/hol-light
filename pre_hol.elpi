@@ -138,6 +138,7 @@ ptmvars (lamp V_ B) Vs Ws :-
 
 pred ptmbind i:preterm, o:preterm.
 pred env i:string, o:cpretype.
+pred numeral i:string, o:preterm.
 
 ptmbind T1 T2 :-
   (pi V T B FRESH\
@@ -151,6 +152,9 @@ ptmbind T1 T2 :-
   (pi S TY TYS\ 
      ptmcopy (varp S _) (constp S TY) :- env S TYS, !,
        refresh-cpretype TYS TY)
+  =>
+  (pi S N\ 
+     ptmcopy (varp S _) N :- numeral S N, !)
   =>
   ptmcopy T1 T2.
 
@@ -252,9 +256,15 @@ pred elab i:preterm, o:preterm.
 elab T R :- std.do! [
   close-term T TC,
   of-c TC Type ETC,
-  print TC "->" ETC ":" Type, 
+  print T "-c->" TC "-e->" ETC ":" Type, 
   open-term ETC R
 ].
+
+%% ----------------------------------------------------------------------------
+%% Tactics.
+%% ----------------------------------------------------------------------------
+
+pred prove i:preterm, o:@thm.
 
 %% ----------------------------------------------------------------------------
 %% Some tests.

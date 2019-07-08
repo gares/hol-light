@@ -2,6 +2,11 @@
 env S CT :-
   hol.env S T, close-pretype T CT.
 
+numeral S N :-
+  hol.pmk_numeral S N.
+
+prove (combp (combp (constp "=" _) X) X) Thm :-
+  hol.rule.refl X Thm.
 
 /*
 % terms %%%%%%%%%%%%%%%%

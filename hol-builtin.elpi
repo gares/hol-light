@@ -583,6 +583,14 @@ type uty string -> pretype. % User type variable
 type ptycon string -> list pretype -> pretype. % Type constructor
 type sty int -> pretype. % System type variable
 
+% The algebraic data type of preterms
+kind preterm type.
+type varp string -> pretype -> preterm. % Variable
+type constp string -> pretype -> preterm. % Constant
+type combp preterm -> preterm -> preterm. % Combination
+type typing preterm -> pretype -> preterm. % Typing
+type absp preterm -> preterm -> preterm. % Abstraction
+
 % -------------------- environment -----------------------------
 
 external pred hol.env % lookup the type of known constant

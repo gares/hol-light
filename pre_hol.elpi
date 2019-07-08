@@ -209,7 +209,7 @@ pred of i:preterm, o:pretype, o:preterm.
 
 of (absp _ _) _ _ :- halt "absp".
 
-of (typing T TY) TY R :- of T TY R.
+of (typing T TY) TY R :- of-coerce T TY R.
 
 of (constp S _) TY (constp S1 TY) :- overload S S1 CTY, refresh-cpretype CTY TY.
 of (constp S _) TY (constp S TY) :- env S S CTY, refresh-cpretype CTY TY.
@@ -221,22 +221,63 @@ of (lamp (varp S Src) F) (ptycon "fun" [Src,Tgt]) (lamp (varp S Src) F1) :-
 
 of (combp A B) Tgt (combp A1 B1) :-
   of A (ptycon "fun" [Src,Tgt]) A1,
-  of B Src B1.
+  of-coerce B Src B1.
 
-pred of-loop i:preterm. 
+pred of-coerce i:preterm, o:pretype, o:preterm.
+
+
+of-coerce A T R :-
+  report-all-failures-if-no-success (
+  of A T1 R1,
+  (
+   if (trans-coercion T1 T R1 R) true
+  
+    ( Msg is "The term\n\t" ^ {hol.term->string R1} ^
+             "\nhas type\n\t" ^ {hol.ty->string T1} ^
+             "\nthat is not\n\t" ^ {hol.ty->string T},
+       error [ Msg ]
+    )
+  )
+  ).
+
+stash-new E S :- open_safe E L, ( std.mem L S ; stash_in_safe E S ), !.
+
+report-all-failures-if-no-success P :-
+  new_safe E,
+  (((pi ML\ error ML :- !, std.forall ML (stash-new E), fail) => P)
+   ;
+   (error {open_safe E})).
+
+error L :- std.forall L (x\ print "Error:" x), fail.
+
+
+
 /*
-of PTM TY TM :- var TY, declare_constraint (of PTM TY TM) [TY].
-*/
+of-coerce A T R :- of A T R.
+
 of PTM TY TM :- /*not (var TY),*/ not (of-loop PTM),
-  of-loop PTM => of PTM TY1 TM1, !,
-  /*not(TY = TY1),*/
+  of-loop PTM => of PTM TY1 TM1,
+  trans-coercion TY1 TY TM1 TM.
+*/
+
+trans-coercion X X1 T T :- eqq X X1, !.
+trans-coercion X X T T.
+trans-coercion A B T R1 :-
   coercions Coercions,
   mem Coercions (coercion S TS),
-  refresh-cpretype TS (ptycon "fun" [TY1, TYm]),
-  % we type check again to compose coercions, but one could
-  % compute a path in Coercions from TY1 to TY and avoid
-  % the recursive call below
-  of (combp (constp S (ptycon "fun" [TY1, TYm])) TM1) TY TM.
+  refresh-cpretype TS (ptycon "fun" [A, A1]),
+  trans-coercion A1 B (combp (constp S (ptycon "fun" [A, A1])) T) R1.
+
+pred eqq i:pretype, i:pretype.
+eqq (ptycon S L1) (ptycon S L2) :- eqq-list L1 L2.
+eqq (uty N) (uty N).
+eqq (sty N) (sty N).
+eqq (uvar A) (uvar B) :- same_var A B.
+
+pred eqq-list i:list pretype, i:list pretype.
+eqq-list [] [].
+eqq-list [X|XS] [Y|YS] :- eqq X Y, eqq-list XS YS.
+
 
 % HOL-light coercion
 kind coercion type.
@@ -261,7 +302,7 @@ pred elab i:preterm, o:preterm.
 elab T R :- 
   close-term T TC,
   print T "-c->" TC,
-  of-c TC Type ETC,
+  report-all-failures-if-no-success (of-c TC Type ETC),
   print TC "-e->" ETC ":" Type, 
   open-term ETC R
 .

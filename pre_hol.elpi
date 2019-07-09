@@ -207,7 +207,7 @@ refresh-cpretype (ptyfree _V F) T :- refresh-cpretype (F FRESH_) T.
 pred overload i:string, o:string, o:cpretype. % env S S1 T resolve S as S1 : T
 pred of o:preterm, o:pretype, o:preterm.
 
-of (absp _ _) _ _ :- halt "absp".
+%of T _ _ :- print "of" T, fail.
 
 of (typing T TY) TY R :- of-coerce T TY R.
 
@@ -216,27 +216,33 @@ of (constp S _) TY (constp S TY) :- env S S CTY, refresh-cpretype CTY TY.
 
 of (lamp (varp S Src) F) (ptycon "fun" [Src,Tgt]) (lamp (varp S Src) F1) :-
   pi x\
-     (of x Src x :- !) =>
-     of (F x) Tgt (F1 x).
+     atom x Src =>
+     of x Src x =>
+       of (F x) Tgt (F1 x).
 
 of (combp A B) Tgt (combp A1 B1) :-
   of A (ptycon "fun" [Src,Tgt]) A1,
   of-coerce B Src B1.
 
-of (combp (combp (constp "*" _) X) Y) A R :-
+of (combp (constp "*" _) X) (@fun [A,A]) R :-
    print "algebra!",
    RMT = @fun [ptycon "ring" [A], @fun [A , @fun [A, A]]],
-   R = (combp (combp (combp (constp "ring_mul" RMT) AlgS) RX) RY),
+   R = (combp (combp (constp "ring_mul" RMT) AlgS) RX),
    of X A RX,
-   of Y A RY,
-   is_ring A AlgS.
+   std.spy(is_ring A AlgS).
 
 pred is_ring i:pretype, o:preterm.
 
 is_ring T R :-
   % declare_constraint true [_], print_constraints, % to print the context
-  of R (ptycon "ring" [T]) R.
+  atom R (ptycon "ring" [T]).
 
+is_ring (ptycon "prod" [A, B]) (combp (combp (constp "prod_ring" RAB) RA) RB) :-
+  RAB = @fun [ptycon "ring" [A], @fun [ptycon "ring" [B], ptycon "ring" [ptycon "prod" [A, B]]]],
+  is_ring A RA,
+  is_ring B RB.
+
+pred atom o:preterm, o:pretype.
 
 pred of-coerce i:preterm, o:pretype, o:preterm.
 

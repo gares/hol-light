@@ -205,7 +205,7 @@ refresh-cpretype (ptyfree _V F) T :- refresh-cpretype (F FRESH_) T.
 
  
 pred overload i:string, o:string, o:cpretype. % env S S1 T resolve S as S1 : T
-pred of i:preterm, o:pretype, o:preterm.
+pred of o:preterm, o:pretype, o:preterm.
 
 of (absp _ _) _ _ :- halt "absp".
 
@@ -216,7 +216,7 @@ of (constp S _) TY (constp S TY) :- env S S CTY, refresh-cpretype CTY TY.
 
 of (lamp (varp S Src) F) (ptycon "fun" [Src,Tgt]) (lamp (varp S Src) F1) :-
   pi x\
-     (pi T\ of x T x :- !, T = Src) =>
+     (of x Src x :- !) =>
      of (F x) Tgt (F1 x).
 
 of (combp A B) Tgt (combp A1 B1) :-

@@ -1,3 +1,46 @@
+1. Benchmarks:
+  - hack `prove` to call Hol_elpi.elaborate on the preterm
+    and see
+    - does it work
+    - how fast
+  - repeat removing from the preterm all the constants in !the_coercions
+    `&1` -> `1` (see also #3)
+
+2. Non usare HOAS per il type checking visto che non facciamo mai
+   sostituzioni 
+
+3. Round trip printing -> elaboration (necessita #2)
+
+    elab normale:
+
+       (x:real) + y
+       (x_real) (+_R->R->R) (y_real)
+
+    elab dove overload diventa skeleton
+ 
+       x + y
+       (x_A) (+_A->A->A) (y_A)
+
+   passo min-fill
+
+       (annot x_real) (+_R->R->R) (y_real)
+       (annot x_real) (real_add_R->R->R) (y_real)
+
+     min-fill i:preterm, i:preterm, o:preterm.
+     min-fill FullElab SkelElab MinElab.
+
+     min-fill (varb S T) (varb S V) 
+                (combp (const "annot" {{ ^T -> ^T }}) (varb S T)) :- var V, V = T. 
+     min-fill (combp A B) (combp A1 B1) (combp A2 B2) :- ...
+
+   stampa dove "annot (x_T)" diventa "x : T"
+
+   Per le coercion, l'inserimento dovrebbe diventare deterministico
+   se il tipo del "castato" e del contesto sono ground. Problema tipico
+   nei lemmi di morfismo a proposito delle coercions.
+     &x + &x = &(x + x)
+
+----------------------------------------------------
 To Do list
 
 - Typechecker (informative type errors?)
@@ -61,6 +104,7 @@ Esempio classico in math-comp:
  is_group H
 --------------
   one ?g IN (H & f @ G)                     forall t, is_group t -> 1 IN t
+                                                   r, is_ring r -> is_group (r2g r) -> 1 IN (r2g r)
 
 
 is_group (A & B) J :-  is_group A J1 , is_group_B J2, J = mmm.

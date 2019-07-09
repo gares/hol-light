@@ -220,23 +220,47 @@ of (lamp (varp S Src) F) (ptycon "fun" [Src,Tgt]) (lamp (varp S Src) F1) :-
      of x Src x =>
        of (F x) Tgt (F1 x).
 
+
+:name "of:application"
 of (combp A B) Tgt (combp A1 B1) :-
   of A (ptycon "fun" [Src,Tgt]) A1,
   of-coerce B Src B1.
 
-of (combp (constp "*" _) X) (@fun [A,A]) R :-
+:before "of:application"
+of (combp (combp (constp "==>" _) H) G)
+   (@con "bool")
+   (combp (combp (constp "==>" T) H1) G1) :-
+   T = @fun [@con "bool", @fun [@con "bool", @con "bool"]],
+   of H (@con "bool") H1,
+   prove-async H1 Hyps,
+  print "assume" Hyps,
+   Hyps => of G (@con "bool") G1.
+
+prove-async (combp (combp (constp "IN" _) V) R) [ in_ring V R ].
+
+in_ring (combp (constp "ring_0" _) R) (combp (constp "ring_carrier" _) R).
+
+
+of (combp (combp (constp "*" _) X) Y) A R :-
    print "algebra!",
    RMT = @fun [ptycon "ring" [A], @fun [A , @fun [A, A]]],
-   R = (combp (combp (constp "ring_mul" RMT) AlgS) RX),
+   R = (combp (combp (combp (constp "ring_mul" RMT) AlgS) RX) RY),
    of X A RX,
-   std.spy(is_ring A AlgS).
+   of Y A RY,
+   std.spy(is_ring A AlgS),
+   std.spy(in_ring RX (combp (constp "ring_carrier" _) AlgS)),
+   std.spy(in_ring RY (combp (constp "ring_carrier" _) AlgS)).
 
 pred is_ring i:pretype, o:preterm.
 
-is_ring T R :-
+is_ring T RUnique :-
   % declare_constraint true [_], print_constraints, % to print the context
   atom R (ptycon "ring" [T]).
-
+  /*,
+  if (atom R1 (ptycon "ring" [T]), not(R1 = R))
+     (RUnique = combp (varp "guess" (@fun [ptycon "ring" [T],ptycon "ring" [T]])) R)
+     (RUnique = R) .
+*/
 is_ring (ptycon "prod" [A, B]) (combp (combp (constp "prod_ring" RAB) RA) RB) :-
   RAB = @fun [ptycon "ring" [A], @fun [ptycon "ring" [B], ptycon "ring" [ptycon "prod" [A, B]]]],
   is_ring A RA,
@@ -260,7 +284,7 @@ of-coerce A T R :-
     )*/
   )
   ).
-
+/*
 stash-new E S :- open_safe E L, ( std.mem L S ; stash_in_safe E S ), !.
 
 report-all-failures-if-no-success P :-
@@ -270,7 +294,7 @@ report-all-failures-if-no-success P :-
    (error {open_safe E})).
 
 error L :- std.forall L (x\ print "Error:" x), fail.
-
+*/
 
 
 /*
@@ -280,12 +304,14 @@ of PTM TY TM :- /*not (var TY),*/ not (of-loop PTM),
   of-loop PTM => of PTM TY1 TM1,
   trans-coercion TY1 TY TM1 TM.
 */
-
+pred trans-coercion o:pretype, o:pretype, o:preterm, o:preterm.
 trans-coercion X X1 T T :- eqq X X1, !.
 trans-coercion X X T T.
 trans-coercion A B T R1 :-
   coercions Coercions,
+  %print "looking for a coercion" A "->" B "for" T,
   mem Coercions (coercion S TS),
+  %print "attempt" S ":" TS,
   refresh-cpretype TS (ptycon "fun" [A, A1]),
   trans-coercion A1 B (combp (constp S (ptycon "fun" [A, A1])) T) R1.
 
@@ -323,7 +349,7 @@ pred elab i:preterm, o:preterm.
 elab T R :- 
   close-term T TC,
   print T "-c->" TC,
-  report-all-failures-if-no-success (of-c TC Type ETC),
+  /*report-all-failures-if-no-success*/ (of-c TC Type ETC),
   print TC "-e->" ETC ":" Type, 
   open-term ETC R
 .

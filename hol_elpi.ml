@@ -565,11 +565,11 @@ end
 
 end
 
-(* little test 
+(* little test *)
 let () = Hol_elpi.(query (hol ()) "main");;
 
 let _ : thm = prove (`0 = 0`, Hol_elpi.prove_tac)
-*)
+
 (* Antiquotation *)
 let () = reserve_words ["^"];;
 let () = install_parser ("elpi",(function

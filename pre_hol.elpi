@@ -141,11 +141,11 @@ pred env i:string, o:string, o:cpretype. % env S S1 T resolve S as S1 : T
 pred numeral i:string, o:preterm.
 
 ptmbind T1 T2 :-
-  (pi V T B FRESH\
+  (pi S V T B FRESH\
      ptmcopy (absp (varp S _ as V) T) (lamp (varp S FRESH) B) :- !,
         pi v \ (ptmcopy V v :- !) => ptmcopy T (B v))
   =>
-  (pi V T B S VT\
+  (pi S V T B S VT\
      ptmcopy (absp (typing (varp S _ as V) VT) T) (lamp (varp S VT) B) :- !,
         pi v \ (ptmcopy V v :- !) => ptmcopy T (B v))
   =>
@@ -165,7 +165,7 @@ ptmbind T1 T2 :-
 pred ptmunbind i:preterm, o:preterm.
 
 ptmunbind T1 T2 :-
-  (pi V T B \
+  (pi V T X\
      (ptmcopy (lamp V T) (absp V X) :- !, ptmcopy (T V) X))
   => ptmcopy T1 T2.
 

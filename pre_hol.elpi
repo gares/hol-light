@@ -227,16 +227,16 @@ pred of-coerce i:preterm, o:pretype, o:preterm.
 
 
 of-coerce A T R :-
-  report-all-failures-if-no-success (
+  /*report-all-failures-if-no-success*/ (
   of A T1 R1,
   (
-   if (trans-coercion T1 T R1 R) true
-  
-    ( Msg is "The term\n\t" ^ {hol.term->string R1} ^
+    (trans-coercion T1 T R1 R) 
+  /*
+    ( Msg is "error"/*"The term\n\t" ^ {hol.term->string R1} ^
              "\nhas type\n\t" ^ {hol.ty->string T1} ^
-             "\nthat is not\n\t" ^ {hol.ty->string T},
+             "\nthat is not\n\t" ^ {hol.ty->string T}*/,
        error [ Msg ]
-    )
+    )*/
   )
   ).
 

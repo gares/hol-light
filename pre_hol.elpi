@@ -223,6 +223,21 @@ of (combp A B) Tgt (combp A1 B1) :-
   of A (ptycon "fun" [Src,Tgt]) A1,
   of-coerce B Src B1.
 
+of (combp (combp (constp "*" _) X) Y) A R :-
+   print "algebra!",
+   RMT = @fun [ptycon "ring" [A], @fun [A , @fun [A, A]]],
+   R = (combp (combp (combp (constp "ring_mul" RMT) AlgS) RX) RY),
+   of X A RX,
+   of Y A RY,
+   is_ring A AlgS.
+
+pred is_ring i:pretype, o:preterm.
+
+is_ring T R :-
+  % declare_constraint true [_], print_constraints, % to print the context
+  of R (ptycon "ring" [T]) R.
+
+
 pred of-coerce i:preterm, o:pretype, o:preterm.
 
 

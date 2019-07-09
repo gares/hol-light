@@ -475,7 +475,7 @@ end
   ;;
 
   let static_check h q =
-    if not (Compile.static_check h q) then
+    if not (Compile.static_check h ~checker:[Parse.program ["./elpi-checker.elpi"]] q) then
       failwith "elpi: type error"
   ;;
 

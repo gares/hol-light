@@ -360,7 +360,7 @@ main :-
                              (combp (varp "y" (uty "t"))
                               (combp (varp "x" (uty "t")) (varp "0" @dummy))))),
   (env "0" "0" (ptybody (ptycon "num" []))) =>
-  (env "real_of_num" (ptybody (@fun [@con "num", @con "real"]))) =>
+  (env "real_of_num" "real_of_num" (ptybody (@fun [@con "num", @con "real"]))) =>
   (coercions [coercion "real_of_num" (ptybody (@fun [@con "num", @con "real"]))]) =>
     test1 (elab (absp (typing (varp "x" (uty "t")) (@fun [@con "real", @con "bool"]))
                              (combp (varp "y" (uty "t"))

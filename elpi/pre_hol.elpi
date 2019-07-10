@@ -424,6 +424,6 @@ main :-
              ]) =>
     test1 (elab (absp (typing (varp "x" (uty "t")) (@fun [@con "complex", @con "bool"]))
                               (combp (varp "x" (uty "t")) (varp "0" @dummy)))),
-
+  print "antiquot" {{ a + ^X }},
 
   print "... tests finished.".

@@ -4,9 +4,18 @@ needs "elpi/pre_elpi.ml";;
 
 unset_jrh_lexer;;
 
+(* ``quotation`` *)
 let () = Quotation.add "elp" (Quotation.ExStr (fun _ s ->
   "Hol_elpi.quotation \""^String.escaped s^"\""));;
-  
+
+(* Antiquotation {{.. ^X .. }} *)
+let antiquotation_tag = " elpi "
+let () = reserve_words ["^"];;
+let () = install_parser ("elpi",(function
+  | Resword "^" :: Ident v :: rest ->
+      Varp(antiquotation_tag^v,Ptycon("",[])), rest
+  | _ -> raise Noparse )) ;;
+
 set_jrh_lexer;;
 
 module Hol_elpi : sig
@@ -125,6 +134,8 @@ end = struct
 
   end = struct
 
+    let tag_len = String.length antiquotation_tag
+
     open BuiltInPredicate;;
     let elpi_string_of_preterm x = string_of_term (unsafe_term_of_preterm x);;
 
@@ -135,7 +146,16 @@ end = struct
       constructors = [
         K("varp","Variable",A(BuiltInData.string,A(Hol_pretype.t,N)),
            B (fun s ty -> Varp(s,ty)),
-           M (fun ~ok ~ko -> function Varp(s,ty) -> ok s ty | _ -> ko ()));
+           MS (fun ~ok ~ko -> function
+              | Varp(s,ty) -> fun state -> (* TODO: fix MS in elpi (data.ml:compile_matcher_ko) *)
+                  (*let len_s = String.length s in
+                  if len_s > tag_len && String.sub s 0 tag_len = antiquotation_tag then
+                    let text = String.sub s tag_len (len_s - tag_len) in
+                    let hack_state, t = Quotation.lp ~depth:0 (*TODO:wrong*) state Ast.(Loc.initial "(antiquot)") text in
+                    state, t, []
+                  else*)
+                    ok s ty state
+              | _ -> ko));
         K("constp","Constant",A(BuiltInData.string,A(Hol_pretype.t, N)),
            B (fun s ty -> Constp(s,ty)),
            M (fun ~ok ~ko -> function Constp(s,ty) -> ok s ty | _ -> ko ()));
@@ -578,11 +598,4 @@ let () = Hol_elpi.(query "main");;
 
 let _ : thm = prove (`0 = 0`, Hol_elpi.prove_tac)
 
-(* Antiquotation *)
-let () = reserve_words ["^"];;
-let () = install_parser ("elpi",(function
-  | Resword "^" :: Ident v :: rest ->
-      Varp(" elpi ",Ptycon(v,[])), rest
-  | _ -> raise Noparse
-))
-;;
+

@@ -9,4 +9,6 @@ update_database.ml
 .*.un~
 .*.swp
 *.dmtcp
+dmtcp_restart_*sh
+ckpt_*_files
 *.cmt

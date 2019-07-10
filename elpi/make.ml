@@ -1,6 +1,6 @@
 #use "topfind";;
 #require "elpi";;
-needs "pre_elpi.ml";;
+needs "elpi/pre_elpi.ml";;
 
 unset_jrh_lexer;;
 
@@ -17,8 +17,11 @@ module Hol_elpi : sig
   val files : string list -> elpi_code
   val hol : unit -> elpi_code
 
+  (* typecheck *)
+  val typecheck : ?code:elpi_code -> unit -> unit
+
   (* run a query *)
-  val query : ?max_steps:int -> elpi_code -> string -> unit
+  val query : ?max_steps:int -> ?code:elpi_code -> string -> unit
 
   (* activate debugging, eventually focus on some Elpi predicates *)
   type debug = On of string list | Off
@@ -435,7 +438,7 @@ end
     Setup.set_error (fun ?loc:_ s -> failwith ("Elpi: " ^ s));
     Setup.set_anomaly (fun ?loc:_ s -> failwith ("Elpi: anomaly: " ^ s));
     Setup.set_type_error (fun ?loc:_ s -> failwith ("Elpi: type error: " ^ s));
-    let builtins_doc_file = "hol-builtin.elpi" in
+    let builtins_doc_file = "elpi/hol-builtin.elpi" in
     let builtins = Elpi.Builtin.std_declarations @ Builtins.declarations in
     let fmt = Format.formatter_of_out_channel (open_out builtins_doc_file) in
     BuiltIn.document fmt builtins;
@@ -454,7 +457,7 @@ end
       failwith ("elpi: " ^ Elpi.API.Ast.Loc.show loc ^ ": " ^ msg)
   ;;
 
-  let hol () = files ["pre_hol.elpi"; "hol.elpi"];;
+  let hol () = files ["elpi/pre_hol.elpi"; "elpi/hol.elpi"];;
 
   type debug = On of string list | Off
 
@@ -475,7 +478,7 @@ end
   ;;
 
   let static_check h q =
-    if not (Compile.static_check h ~checker:[Parse.program ["./elpi-checker.elpi"]] q) then
+    if not (Compile.static_check h ~checker:[Parse.program ["elpi/elpi-checker.elpi"]] q) then
       failwith "elpi: type error"
   ;;
 
@@ -516,7 +519,12 @@ end
   (* ================================================================ *)
   (* Entry points to call elpi code *)
 
-  let query ?max_steps p s = run_text ?max_steps p s;;
+  let query ?max_steps ?(code=hol ()) s = run_text ?max_steps code s;;
+
+  let typecheck ?(code=hol ()) () =
+    let q = Parse.goal (Ast.Loc.initial "(query)") "true" in
+    let q = Compile.query code q in
+    static_check header q
 
   let prove concl =
     let x, _ = run_predicate (hol ())
@@ -566,7 +574,7 @@ end
 end
 
 (* little test *)
-let () = Hol_elpi.(query (hol ()) "main");;
+let () = Hol_elpi.(query "main");;
 
 let _ : thm = prove (`0 = 0`, Hol_elpi.prove_tac)
 

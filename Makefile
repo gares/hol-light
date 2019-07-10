@@ -147,7 +147,7 @@ clean:; rm -f update_database.ml pa_j.ml pa_j.cmi pa_j.cmo hol hol.multivariate 
 
 define build =
   ocamlfind ocamlc -package num,camlp5,elpi -bin-annot \
-	  -I $(shell camlp5 -where) -pp './pp_build' -c $(1)
+	  -I $(shell camlp5 -where) -I elpi/ -pp './pp_build' -c $(1)
 endef
 
 merlin:
@@ -163,8 +163,8 @@ merlin:
 	$(call build,bool.ml)
 	$(call build,drule.ml)
 	$(call build,tactics.ml)
-	$(call build,pre_elpi.ml)
-	$(call build,hol_elpi.ml)
+	$(call build,elpi/pre_elpi.ml)
+	$(call build,elpi/make.ml)
 
 run:
 	readline-editor -- ocaml -I `camlp5 -where`

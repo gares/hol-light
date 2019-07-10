@@ -236,10 +236,13 @@ of (combp (combp (constp "==>" _) H) G)
   print "assume" Hyps,
    Hyps => of G (@con "bool") G1.
 
+pred prove-async i:preterm, o:list prop.
+
 prove-async (combp (combp (constp "IN" _) V) R) [ in_ring V R ].
 
-in_ring (combp (constp "ring_0" _) R) (combp (constp "ring_carrier" _) R).
+pred in_ring i:preterm, i:preterm.
 
+in_ring (combp (constp "ring_0" _) R) (combp (constp "ring_carrier" _) R).
 
 of (combp (combp (constp "*" _) X) Y) A R :-
    print "algebra!",

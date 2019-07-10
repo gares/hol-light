@@ -1,0 +1,55 @@
+
+%% ----------------------------------------------------------------------------
+%% ovrloading for algebraic structures
+%% ----------------------------------------------------------------------------
+
+:before "of:application"
+of (combp (combp (varp "*" _) X) Y) A R :-
+   RMT = @fun [ptycon "ring" [A], @fun [A , @fun [A, A]]],
+   R = (combp (combp (combp (constp "ring_mul" RMT) AlgS) RX) RY),
+   of X A RX,
+   of Y A RY,
+   % we find a ring AlgS on type A
+   std.spy(ring_over A AlgS),
+   % we check that the two arguments of the operator are known to belong to AlgS
+   std.spy(in_ring RX (combp (constp "ring_carrier" _) AlgS)),
+   std.spy(in_ring RY (combp (constp "ring_carrier" _) AlgS)).
+
+%% ----------------------------------------------------------------------------
+%% Inference of an algebraic structure given a type
+%% ----------------------------------------------------------------------------
+
+pred ring_over i:pretype, o:preterm.
+
+% base instances (variables or known concrete structures)
+ring_over T R :- of (varp _ _) (ptycon "ring" [T]) R.
+
+% derived instances
+ring_over (ptycon "prod" [A, B]) (combp (combp (constp "prod_ring" RAB) RA) RB) :-
+  RAB = @fun [ptycon "ring" [A], @fun [ptycon "ring" [B], ptycon "ring" [ptycon "prod" [A, B]]]],
+  ring_over A RA,
+  ring_over B RB.
+
+% 8< ------------------------------------------------------------------------
+
+
+%% ----------------------------------------------------------------------------
+%% IFOL prover (for testing membership to an algebraic structure)
+%% ----------------------------------------------------------------------------
+
+:before "of:application"
+of (combp (combp (varp "==>" _) H) G)
+   (@con "bool")
+   (combp (combp (constp "==>" T) H1) G1) :-
+   T = @fun [@con "bool", @fun [@con "bool", @con "bool"]],
+   of H (@con "bool") H1,
+   prove-async H1 Hyps,
+   Hyps => of G (@con "bool") G1.
+
+pred prove-async i:preterm, o:list prop.
+
+prove-async (combp (combp (constp "IN" _) V) R) [ in_ring V R ].
+
+pred in_ring i:preterm, i:preterm.
+
+in_ring (combp (varp "ring_0" _) R) (combp (constp "ring_carrier" _) R).

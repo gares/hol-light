@@ -1,0 +1,141 @@
+%% ----------------------------------------------------------------------------
+%% entrypoint
+%% ----------------------------------------------------------------------------
+
+pred elab i:preterm, o:preterm.
+
+%% ----------------------------------------------------------------------------
+%% open dependencies
+%% ----------------------------------------------------------------------------
+
+% HOL-light coercion
+kind coercion type.
+type coercion string -> cpretype -> coercion.
+
+pred coercions o:list coercion. % DB
+
+pred overload i:string, o:string, o:cpretype. % env S S1 T resolve S as S1 : T
+pred env i:string, o:string, o:cpretype. % env S S1 T resolve S as S1 : T
+pred numeral i:string, o:preterm.
+
+%% ----------------------------------------------------------------------------
+%% main
+%% ----------------------------------------------------------------------------
+
+elab T R :-
+  % we assume a SINGLE type for each free variable
+  free-vars T [] VS, std.map VS build-clause-fv VST, (VST =>
+   (
+    % we try with no coercions
+    ((coercions [] :- !) => of T TY R)
+     ;
+    % we try again with coercions
+    (of T TY R)
+   )
+  ),
+  print VS "|-" T "\n-e->\n" R ":" TY.
+
+pred build-clause-fv i:preterm, o:prop.
+
+build-clause-fv (varp S _) (of (varp S _) Ty (varp S Ty) :- !).
+ 
+pred free-vars i:preterm, i:list preterm, o:list preterm.
+
+free-vars (varp S _ as V) L L :- (std.mem! L V ; env S _ _ ; overload S _ _ ; numeral S _), !.
+free-vars (varp _ _ as V) L [V|L].
+free-vars (typing T _) L L1 :- free-vars T L L1.
+free-vars (combp T1 T2) L L2 :-
+  free-vars T1 L  L1,
+  free-vars T2 L1 L2.
+free-vars (absp (varp _ _ as V) T) L L1 :-
+  (pi L\ free-vars V L L :- !) =>
+  free-vars T L L1.
+free-vars (absp (typing (varp _ _ as V) _) T) L L1 :-
+  (pi L\ free-vars V L L :- !) =>
+  free-vars T L L1.
+
+%% ----------------------------------------------------------------------------
+%% typing
+%% ----------------------------------------------------------------------------
+
+pred of o:preterm, o:pretype, o:preterm.
+
+:name "of:constant"
+of (varp S _) TY (constp S1 TY) :- overload S S1 CTY, refresh-cpretype CTY TY.
+of (varp S _) TY (constp S TY) :- env S S CTY, refresh-cpretype CTY TY.
+of (varp S _) (@con "num") N :- numeral S N.
+
+:name "of:abstraction"
+of (absp (varp S D) F) (@fun [Src,Tgt]) (absp (varp S Src) F1) :-
+  (of (varp S D) Src (varp S Src) :- !) =>
+    of F Tgt F1.
+of (absp (typing (varp S D) Src) F) (@fun [Src,Tgt]) (absp (varp S Src) F1) :-
+  (of (varp S D) Src (varp S Src) :- !) =>
+    of F Tgt F1.
+
+:name "of:application"
+of (combp A B) Tgt (combp A1 B1) :-
+  of A (ptycon "fun" [Src,Tgt]) A1,
+  of-coerce B Src B1.
+of (typing T TY) TY T1 :-
+  of-coerce T TY T1.
+
+%% ----------------------------------------------------------------------------
+%% coercing
+%% ----------------------------------------------------------------------------
+
+% like of, but can cast the term inserting a coercion
+pred of-coerce i:preterm, o:pretype, o:preterm.
+
+of-coerce A T R :-
+  /*report-all-failures-if-no-success*/ (
+  of A T1 R1,
+  (
+    (trans-coercion T1 T R1 R) 
+  /*
+    ( Msg is "error"/*"The term\n\t" ^ {hol.term->string R1} ^
+             "\nhas type\n\t" ^ {hol.ty->string T1} ^
+             "\nthat is not\n\t" ^ {hol.ty->string T}*/,
+       error [ Msg ]
+    )*/
+  )
+  ).
+/*
+stash-new E S :- open_safe E L, ( std.mem L S ; stash_in_safe E S ), !.
+
+report-all-failures-if-no-success P :-
+  new_safe E,
+  (((pi ML\ error ML :- !, std.forall ML (stash-new E), fail) => P)
+   ;
+   (error {open_safe E})).
+
+error L :- std.forall L (x\ print "Error:" x), fail.
+*/
+
+
+pred trans-coercion o:pretype, o:pretype, o:preterm, o:preterm.
+trans-coercion X X1 T T :- eqq X X1, !.
+trans-coercion X X T T.
+trans-coercion A B T R1 :-
+  coercions Coercions,
+  %print "looking for a coercion" A "->" B "for" T,
+  mem Coercions (coercion S TS),
+  %print "attempt" S ":" TS,
+  refresh-cpretype TS (ptycon "fun" [A, A1]),
+  trans-coercion A1 B (combp (constp S (ptycon "fun" [A, A1])) T) R1.
+
+% == of prolog
+pred eqq i:pretype, i:pretype.
+eqq (ptycon S L1) (ptycon S L2) :- eqq-list L1 L2.
+eqq (uty N) (uty N).
+eqq (sty N) (sty N).
+eqq (uvar A) (uvar B) :- same_var A B.
+
+pred eqq-list i:list pretype, i:list pretype.
+eqq-list [] [].
+eqq-list [X|XS] [Y|YS] :- eqq X Y, eqq-list XS YS.
+
+% no bang, this tries all members
+pred mem i:list A, o:A.
+mem [X|_] X.
+mem [_|Xs] X :- mem Xs X.

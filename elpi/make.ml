@@ -174,6 +174,48 @@ end = struct
     }
 
   end
+
+  module Cprover = struct
+
+type proof =
+   | Pand_l    :  proof -> proof
+   | Pand_r    :  proof * proof -> proof
+   | Por_l     :  preterm * preterm * proof * proof -> proof
+   | Por1_r    :  preterm * proof -> proof
+   | Por2_r    :  preterm * proof -> proof
+   | Porc_r    :  proof -> proof
+   | Pex_falso :  proof
+   | Pinitial  :  preterm -> proof
+   | Pimp_l    :  proof * proof -> proof
+   | Pimp_r    :  preterm * proof -> proof
+   | Pforall_l :  proof -> proof
+   | Pexists_r :  preterm * proof -> proof
+   | Pforall_r :  preterm * preterm * proof -> proof
+   | Pexists_l :  preterm * preterm * proof -> proof
+
+let t = AlgebraicData.declare {
+      ty = TyName "preterm";
+      doc = "The algebraic data type of preterms";
+      pp = (fun fmt t -> Format.fprintf fmt "%s" "TODO");
+      constructors = [
+        K("and_l","",S N,B(fun x -> Pand_l x),M(fun ~ok ~ko -> function Pand_l x -> ok x | _ -> ko ()));
+        K("and_r","",S (S N),B(fun x y -> Pand_r(x,y)),M(fun ~ok ~ko -> function Pand_r(x,y) -> ok x y | _ -> ko ()));
+        K("or_l","",A(Hol_preterm.t,A(Hol_preterm.t,S(S N))),B(fun x -> x),M(fun ~ok ~ko -> function x -> ok x | _ -> ko ()));
+        K("or1_r","",A(Hol_preterm.t,S N),B(fun x -> x),M(fun ~ok ~ko -> function x -> ok x | _ -> ko ()));
+        K("or2_r","",A(Hol_preterm.t,S N),B(fun x -> x),M(fun ~ok ~ko -> function x -> ok x | _ -> ko ()));
+        K("orc_r","",S N,B(fun x -> x),M(fun ~ok ~ko -> function x -> ok x | _ -> ko ()));
+        K("ex-falso","",N,B(Pex_falso),M(fun ~ok ~ko -> function x -> ok x | _ -> ko ()));
+        K("initial","",A(Hol_preterm.t,N),B(fun x -> x),M(fun ~ok ~ko -> function x -> ok x | _ -> ko ()));
+        K("imp_l","",S (S N),B(fun x -> x),M(fun ~ok ~ko -> function x -> ok x | _ -> ko ()));
+        K("imp_r","",A(Hol_preterm.t,S N),B(fun x -> x),M(fun ~ok ~ko -> function x -> ok x | _ -> ko ()));
+        K("forall_l","",S N,B(fun x -> x),M(fun ~ok ~ko -> function x -> ok x | _ -> ko ()));
+        K("nforall_r","",A(Hol_preterm.t,A(Hol_preterm.t,S N)),B(fun x -> x),M(fun ~ok ~ko -> function x -> ok x | _ -> ko ()));
+        K("nexists_l","",A(Hol_preterm.t,A(Hol_preterm.t,S N)),B(fun x -> x),M(fun ~ok ~ko -> function x -> ok x | _ -> ko ()));
+        K("exists_r","",A(Hol_preterm.t,S N),B(fun x -> x),M(fun ~ok ~ko -> function x -> ok x | _ -> ko ()));
+      ]
+}
+
+  end
   
   (* ========================== quotations ========================== *)
 

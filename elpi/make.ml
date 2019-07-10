@@ -22,12 +22,14 @@ module Hol_elpi : sig
 
   type elpi_code
 
-  (* compile elpi files *)
-  val files : string list -> elpi_code
+  (* compile elpi compile_files *)
+  val compile_files : string list -> elpi_code
   val hol : unit -> elpi_code
 
+  
   (* typecheck *)
   val typecheck : ?code:elpi_code -> unit -> unit
+  val print2html : ?code:elpi_code -> unit -> unit
 
   (* run a query *)
   val query : ?max_steps:int -> ?code:elpi_code -> string -> unit
@@ -469,7 +471,7 @@ end
 
   type elpi_code = Elpi.API.Compile.program
 
-  let files fl : elpi_code =
+  let compile_files fl : elpi_code =
     try
       let p = Parse.program fl in
       Compile.program ~flags:Compile.default_flags header [p]
@@ -477,7 +479,7 @@ end
       failwith ("elpi: " ^ Elpi.API.Ast.Loc.show loc ^ ": " ^ msg)
   ;;
 
-  let hol () = files ["elpi/pre_hol.elpi"; "elpi/elab.elpi"; "elpi/algebra.elpi"; "elpi/hol.elpi"];;
+  let hol () = compile_files ["elpi/pre_hol.elpi"; "elpi/elab.elpi"; "elpi/algebra.elpi"; "elpi/hol.elpi"];;
 
   type debug = On of string list | Off
 
@@ -545,6 +547,20 @@ end
     let q = Parse.goal (Ast.Loc.initial "(query)") "true" in
     let q = Compile.query code q in
     static_check header q
+
+  let print2html ?(code=hol ()) () =
+    let q = Parse.goal (Ast.Loc.initial "(query)") "true" in
+    let q = Compile.query code q in
+    let quotedP, _  = Quotation.quote_syntax q in
+    let printer = compile_files ["elpi2html.elpi"] in
+    run_predicate ~typecheck:false printer
+      (Query.Query {
+        predicate = "main-quoted";
+        arguments = D(BuiltInData.list BuiltInData.any,quotedP,
+                    D(BuiltInData.string,"elpi/index.html",
+                    D(BuiltInData.list BuiltInData.string,[], (* blacklist *)
+                    N))) })
+
 
   let prove concl =
     let x, _ = run_predicate (hol ())

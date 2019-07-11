@@ -105,16 +105,6 @@ proof S (or_l A B P Q) (Gamma --> Delta) :-
     proof S P ([A|Gamma1] --> Delta),
     proof S Q ([B|Gamma1] --> Delta).
 
-/*
-proof S (or1_r A P) (Gamma --> Delta) :-
-    memb_and_rest (A or _B) Delta Delta1,
-    proof S P (Gamma --> [A|Delta1]).
-
-proof S (or2_r B P) (Gamma --> Delta) :-
-    memb_and_rest (_A or B) Delta Delta1,
-    proof S P (Gamma --> [B|Delta1]).
-*/
-
 proof S (orc_r P) (Gamma --> Delta) :-
     memb_and_rest (A or B) Delta Delta1,
     proof S P (Gamma --> [A,B|Delta1]).
@@ -132,10 +122,18 @@ proof tt (exists_r T P) (Gamma --> Delta) :-
     memb_and_rest (exists A) Delta Delta1,
     proof tt P (Gamma --> [A T|Delta1]).
 
+%% ----------------------------------------------------------------------------
+%% Iterative deepening.
+%% ----------------------------------------------------------------------------
+
 pred nprove i:int, o:proof, i:seq.
 nprove N P Seq :- N > 5, !, halt "too deep".
 nprove N P Seq :- amplify N Seq ASeq, proof tt P ASeq, !.
-nprove N P Seq :- M is (N + 1), print "level " M, nprove M P Seq.
+nprove N P Seq :- M is N + 1, print "Search at depth " M, nprove M P Seq.
+
+%% ----------------------------------------------------------------------------
+%% Amplify.
+%% ----------------------------------------------------------------------------
 
 pred amplify i:int, i:seq, o:seq.
 amplify 1 Seq Seq.
@@ -168,6 +166,10 @@ amplify_exists N [A|Delta] [A|Delta1] :-
 
 pred start o:proof, i:seq.
 start P Seq :- proof ff P Seq.
+
+%% ----------------------------------------------------------------------------
+%% Tests.
+%% ----------------------------------------------------------------------------
 
 type x form.
 type d i -> form.

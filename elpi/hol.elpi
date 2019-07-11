@@ -54,6 +54,12 @@ hol2prover {{ ? ^V . ^B }} (prover.exists F1) :-
 hol2prover X (prover.atom X).
 
 
+pred search i:preterm, o:prover.proof preterm preterm.
+search T NP :-
+  hol2prover T T1,
+  prover.start P T1,
+  prover.nproof P NP.
+
 /*
 % terms %%%%%%%%%%%%%%%%
 

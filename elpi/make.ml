@@ -50,6 +50,9 @@ module Hol_elpi : sig
   val prove_tac : tactic
 
   val step : tactic
+
+  (* calls cprover *)
+  val search : term -> tactic
         
 end = struct 
 
@@ -253,6 +256,9 @@ let t = AlgebraicData.declare {
           M(fun ~ok ~ko -> function Pexists_r(t,p) -> ok t p | _ -> ko ()));
       ]
 }
+
+  let reconstruct : proof -> tactic =
+    fun _ -> assert false
 
   end
   
@@ -692,6 +698,17 @@ end
     else elaborate p
   ;;
 
+  let search concl =
+    let proof, () = run_predicate ~typecheck:false (hol ())
+      (Query.Query {
+        predicate = "search";
+        arguments = D(Hol_preterm.t,preterm_of_term concl,
+                    Q(Cprover.t,"P",
+                    N)) })
+    in
+      Cprover.reconstruct proof            
+;;
+
   set_jrh_lexer;;
 
   let prove_tac = CONV_TAC prove
@@ -699,9 +716,9 @@ end
 end
 
 (* little test *)
+(*
 let () = Hol_elpi.(query "main");;
 let () = Hol_elpi.(query "hol2prover {{ a /\ b ==> c \/ !x:A. x = x ==> ?y:A. x = y /\ F  }} P");;
-
 let _ : thm = prove (`0 = 0`, Hol_elpi.prove_tac)
-
+*)
 

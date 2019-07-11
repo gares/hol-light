@@ -721,4 +721,4 @@ let () = Hol_elpi.(query "main");;
 let () = Hol_elpi.(query "hol2prover {{ a /\ b ==> c \/ !x:A. x = x ==> ?y:A. x = y /\ F  }} P");;
 let _ : thm = prove (`0 = 0`, Hol_elpi.prove_tac)
 *)
-
+Hol_elpi.typecheck ();;

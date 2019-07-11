@@ -17,127 +17,120 @@ test1 L :- std.spy(memb_and_rest 0 L [1,2,3]).
 %% FOL formulas.
 %% ----------------------------------------------------------------------------
 
-kind form type.
-kind i    type.
 
-type and, or, imp       form -> form -> form.
-%type neg                form -> form.
-type forall, exists     (i -> form) -> form.
-type bottom              form.
+type and, or, imp       F -> F -> F.
+%type neg                F -> F.
+type forall, exists     (I -> F) -> F.
+type bottom              F.
 
 infixl or  4.
 infixl and 5.
 infixr imp 6.
 
-type c  i.
-type f  i -> i -> i.
-type q  form.
-type p  i -> form.
 
-
-kind  seq   type.
-type  -->   list form -> list form -> seq.
+kind  seq   type -> type.
+type  -->   list F -> list F -> seq F.
 infix -->   3.
 
-kind  proof     type.
+kind  proof     type -> type -> type.
 
-type  and_l     proof -> proof.
-type  and_r     proof -> proof -> proof.
+type  and_l     proof I F -> proof I F.
+type  and_r     proof I F -> proof I F -> proof I F.
 
-type  or_l      form -> form -> proof -> proof -> proof.
-type  or1_r     form -> proof -> proof.
-type  or2_r     form -> proof -> proof.
-type  orc_r     proof -> proof.
+type  or_l      F -> F -> proof I F -> proof I F -> proof I F.
+type  or1_r     F -> proof I F -> proof I F.
+type  or2_r     F -> proof I F -> proof I F.
+type  orc_r     proof I F -> proof I F.
 
-type  ex-falso  proof.
+type  ex-falso  proof I F.
 
-type  initial   form -> proof.
+type  initial   F -> proof I F.
 
-type  imp_l     proof -> proof -> proof.
-type  imp_r     form -> proof -> proof.
+type  imp_l     proof I F -> proof I F -> proof I F.
+type  imp_r     F -> proof I F -> proof I F.
 
-type  forall_l  proof -> proof.
-type  exists_r  i -> proof -> proof.
+type  forall_l  proof I F -> proof I F.
+type  exists_r  i -> proof I F -> proof I F.
 
-type  forall_r  (i -> form) -> (i -> proof) -> proof.
-type  exists_l  (i -> form) -> (i -> proof) -> proof.
+type  forall_r  (i -> F) -> (i -> proof I F) -> proof I F.
+type  exists_l  (i -> F) -> (i -> proof I F) -> proof I F.
 
 % TODO: Check this.
-pred memb i:form, i:list form.
+pred memb i:F, i:list F.
 memb A L :- std.mem L A.
 
-pred proof i:bool, o:proof, i:seq.
+pred search i:bool, o:proof I F, i:seq F.
 
 %%% Step 1.
 
-proof S (and_l P) (Gamma --> Delta) :-
+search S (and_l P) (Gamma --> Delta) :-
     memb_and_rest (A and B) Gamma Gamma1,
-    proof S P ([A,B|Gamma1] --> Delta).
+    search S P ([A,B|Gamma1] --> Delta).
 
-proof _S (initial A) (Gamma --> Delta) :-
+search _S (initial A) (Gamma --> Delta) :-
     memb A Gamma, memb A Delta.
 
-proof S (and_r P1 P2) (Gamma --> Delta) :-
+search S (and_r P1 P2) (Gamma --> Delta) :-
     memb_and_rest (A and B) Delta Delta1,
-    proof S P1 (Gamma --> [A|Delta1]),
-    proof S P2 (Gamma --> [B|Delta1]).
+    search S P1 (Gamma --> [A|Delta1]),
+    search S P2 (Gamma --> [B|Delta1]).
 
-proof S (imp_l P1 P2) (Gamma --> Delta) :-
+search S (imp_l P1 P2) (Gamma --> Delta) :-
     memb_and_rest (A imp B) Gamma Gamma1,
-    proof S P1 (Gamma1 --> [A|Delta]),
-    proof S P2 ([B|Gamma1] --> Delta).
+    search S P1 (Gamma1 --> [A|Delta]),
+    search S P2 ([B|Gamma1] --> Delta).
 
-proof S (imp_r A P) (Gamma --> Delta) :-
+search S (imp_r A P) (Gamma --> Delta) :-
     memb_and_rest (A imp B) Delta Delta1,
-    proof S P ([A|Gamma] --> [B|Delta1]).
+    search S P ([A|Gamma] --> [B|Delta1]).
 
-proof S (forall_r A P) (Gamma --> Delta) :-
+search S (forall_r A P) (Gamma --> Delta) :-
     memb_and_rest (forall A) Delta Delta1,
-    std.spy(pi T\ proof S (P T) (Gamma --> [A T|Delta1])).
+    std.spy(pi T\ search S (P T) (Gamma --> [A T|Delta1])).
 
-proof S (exists_l A P) (Gamma --> Delta) :-
+search S (exists_l A P) (Gamma --> Delta) :-
     memb_and_rest (exists A) Gamma Gamma1,
-    pi T\ proof S (P T) ([A T|Gamma1] --> Delta).
+    pi T\ search S (P T) ([A T|Gamma1] --> Delta).
 
-proof _S ex-falso (Gamma --> _Delta) :-
+search _S ex-falso (Gamma --> _Delta) :-
     std.mem! Gamma bottom.
 
-proof S (or_l A B P Q) (Gamma --> Delta) :-
+search S (or_l A B P Q) (Gamma --> Delta) :-
     memb_and_rest (A or B) Gamma Gamma1,
-    proof S P ([A|Gamma1] --> Delta),
-    proof S Q ([B|Gamma1] --> Delta).
+    search S P ([A|Gamma1] --> Delta),
+    search S Q ([B|Gamma1] --> Delta).
 
-proof S (orc_r P) (Gamma --> Delta) :-
+search S (orc_r P) (Gamma --> Delta) :-
     memb_and_rest (A or B) Delta Delta1,
-    proof S P (Gamma --> [A,B|Delta1]).
+    search S P (Gamma --> [A,B|Delta1]).
 
-proof ff P Seq :-
-    nprove 1 P Seq.
+search ff P Seq :-
+    nsearch 1 P Seq.
 
 %%% Step 2
 
-proof tt (forall_l P) (Gamma --> Delta) :-
+search tt (forall_l P) (Gamma --> Delta) :-
     memb_and_rest (forall A) Gamma Gamma1,
-    proof tt P ([A T_|Gamma1] --> Delta).
+    search tt P ([A T_|Gamma1] --> Delta).
 
-proof tt (exists_r T P) (Gamma --> Delta) :-
+search tt (exists_r T P) (Gamma --> Delta) :-
     memb_and_rest (exists A) Delta Delta1,
-    proof tt P (Gamma --> [A T|Delta1]).
+    search tt P (Gamma --> [A T|Delta1]).
 
 %% ----------------------------------------------------------------------------
 %% Iterative deepening.
 %% ----------------------------------------------------------------------------
 
-pred nprove i:int, o:proof, i:seq.
-nprove N P Seq :- N > 5, !, halt "too deep".
-nprove N P Seq :- amplify N Seq ASeq, proof tt P ASeq, !.
-nprove N P Seq :- M is N + 1, print "Search at depth " M, nprove M P Seq.
+pred nsearch i:int, o:proof I F, i:seq F.
+nsearch N P Seq :- N > 5, !, halt "too deep".
+nsearch N P Seq :- amplify N Seq ASeq, search tt P ASeq, !.
+nsearch N P Seq :- M is N + 1, print "Search at depth " M, nsearch M P Seq.
 
 %% ----------------------------------------------------------------------------
 %% Amplify.
 %% ----------------------------------------------------------------------------
 
-pred amplify i:int, i:seq, o:seq.
+pred amplify i:int, i:seq F, o:seq F.
 amplify 1 Seq Seq.
 amplify N (Gamma1 --> Delta1) (Gamma2 --> Delta2) :-
     N > 1,
@@ -150,7 +143,7 @@ add_copies N A L [A|K] :-
     N > 1, M is N - 1,
     add_copies M A L K.
 
-pred amplify_forall i:int, i:list form, o:list form.
+pred amplify_forall i:int, i:list F, o:list F.
 amplify_forall _N [] [].
 amplify_forall N [forall A|Gamma] Gamma2 :-
     amplify_forall N Gamma Gamma1,
@@ -158,7 +151,7 @@ amplify_forall N [forall A|Gamma] Gamma2 :-
 amplify_forall N [A|Gamma] [A|Gamma1] :-
     amplify_forall N Gamma Gamma1.
 
-pred amplify_exists i:int, i:list form, o:list form.
+pred amplify_exists i:int, i:list F, o:list F.
 amplify_exists _N [] [].
 amplify_exists N [exists A|Delta] Delta2 :-
     amplify_exists N Delta Delta1,
@@ -166,20 +159,20 @@ amplify_exists N [exists A|Delta] Delta2 :-
 amplify_exists N [A|Delta] [A|Delta1] :-
     amplify_exists N Delta Delta1.
 
-pred start o:proof, i:seq.
-start P Seq :- proof ff P Seq.
+pred start o:proof I F, i:seq F.
+start P Seq :- search ff P Seq.
 %% ----------------------------------------------------------------------------
 %% Nominal variant of forall_r and exists_l proof constructors.
 %% ----------------------------------------------------------------------------
 
-type  nforall_r  i -> form -> proof -> proof.
-type  nexists_l  i -> form -> proof -> proof.
+type  nforall_r  I -> F -> proof I F -> proof I F.
+type  nexists_l  I -> F -> proof I F -> proof I F.
 
 %% ----------------------------------------------------------------------------
 %% Translation to nomial proofs.
 %% ----------------------------------------------------------------------------
 
-pred nproof i:proof, o:proof.
+pred nproof i:proof I F, o:proof I F.
 
 % type  and_l     proof -> proof.
 nproof (and_l P) (and_l Q) :-
@@ -242,13 +235,22 @@ nproof (exists_l A P) (nexists_l (tvar N) (A X) (P X)) :-
 %% Tests.
 %% ----------------------------------------------------------------------------
 
+kind form type.
+kind i    type.
+
+type c  i.
+type f  i -> i -> i.
+type q  form.
+type p  i -> form.
 type x form.
 type d i -> form.
 
-main :-
+pred test.
+test :-
     std.spy(start P ([x] --> [x])), !,
     std.spy(start P2 ([bottom] --> [bottom])), !,
     std.spy(start P4 ([] --> [(x or (x imp bottom))])), !,
-    std.spy(start P3 ([] --> [exists x\ (d x) imp (forall y\ d y)])).
+    std.spy(start P3 ([] --> [exists x\ (d x) imp (forall y\ d y)])),
+    std.spy(nproof P3 P3N).
 
 }

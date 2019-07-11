@@ -194,7 +194,7 @@ type proof =
    | Pexists_r of  preterm * proof
 
 let t = AlgebraicData.declare {
-      ty = TyName "proof";
+      ty = TyName "prover.proof";
       doc = "The algebraic data type of first order proofs";
       pp = (fun fmt t -> Format.fprintf fmt "%s" "TODO");
       constructors = [

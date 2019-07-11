@@ -198,46 +198,46 @@ let t = AlgebraicData.declare {
       doc = "The algebraic data type of first order proofs";
       pp = (fun fmt t -> Format.fprintf fmt "%s" "TODO");
       constructors = [
-        K("and_l","",S N,
+        K("prover.and_l","",S N,
           B(fun x -> Pand_l x),
           M(fun ~ok ~ko -> function Pand_l x -> ok x | _ -> ko ()));
-        K("and_r","",S (S N),
+        K("prover.and_r","",S (S N),
           B(fun x y -> Pand_r(x,y)),
           M(fun ~ok ~ko -> function Pand_r(x,y) -> ok x y | _ -> ko ()));
-        K("or_l","",A(Hol_preterm.t,A(Hol_preterm.t,S(S N))),
+        K("prover.or_l","",A(Hol_preterm.t,A(Hol_preterm.t,S(S N))),
           B(fun t1 t2 p1 p2 -> Por_l(t1,t2,p1,p2)),
           M(fun ~ok ~ko -> function Por_l(t1,t2,p1,p2) -> ok t1 t2 p1 p2 | _ -> ko ()));
-        K("or1_r","",
+        K("prover.or1_r","",
           A(Hol_preterm.t,S N),B(fun t p-> Por1_r(t,p)),
           M(fun ~ok ~ko -> function Por1_r(t,p) -> ok t p | _ -> ko ()));
-        K("or2_r","",A(Hol_preterm.t,S N),
+        K("prover.or2_r","",A(Hol_preterm.t,S N),
           B(fun t p -> Por2_r(t,p)),
           M(fun ~ok ~ko -> function Por2_r(t,p) -> ok t p | _ -> ko ()));
-        K("orc_r","",S N,
+        K("prover.orc_r","",S N,
           B(fun x -> Porc_r x),
           M(fun ~ok ~ko -> function Porc_r x -> ok x | _ -> ko ()));
-        K("ex-falso","",N,
+        K("prover.ex-falso","",N,
           B(Pex_falso),
           M(fun ~ok ~ko -> function Pex_falso -> ok | _ -> ko ()));
-        K("initial","",A(Hol_preterm.t,N),
+        K("prover.initial","",A(Hol_preterm.t,N),
           B(fun x -> Pinitial x),
           M(fun ~ok ~ko -> function Pinitial x -> ok x | _ -> ko ()));
-        K("imp_l","",S (S N),
+        K("prover.imp_l","",S (S N),
           B(fun p1 p2 -> Pimp_l(p1,p2)),
           M(fun ~ok ~ko -> function Pimp_l(p1,p2) -> ok p1 p2 | _ -> ko ()));
-        K("imp_r","",A(Hol_preterm.t,S N),
+        K("prover.imp_r","",A(Hol_preterm.t,S N),
           B(fun t p -> Pimp_r(t,p)),
           M(fun ~ok ~ko -> function Pimp_r(t,p) -> ok t p | _ -> ko ()));
-        K("forall_l","",S N,
+        K("prover.forall_l","",S N,
           B(fun x -> Pforall_l x),
           M(fun ~ok ~ko -> function Pforall_l x -> ok x | _ -> ko ()));
-        K("nforall_r","",A(Hol_preterm.t,A(Hol_preterm.t,S N)),
+        K("prover.nforall_r","",A(Hol_preterm.t,A(Hol_preterm.t,S N)),
           B(fun t1 t2 p -> Pforall_r(t1,t2,p)),
           M(fun ~ok ~ko -> function Pforall_r(t1,t2,p) -> ok t1 t2 p | _ -> ko ()));
-        K("nexists_l","",A(Hol_preterm.t,A(Hol_preterm.t,S N)),
+        K("prover.nexists_l","",A(Hol_preterm.t,A(Hol_preterm.t,S N)),
           B(fun t1 t2 p -> Pexists_l(t1,t2,p)),
           M(fun ~ok ~ko -> function Pexists_l(t1,t2,p) -> ok t1 t2 p | _ -> ko ()));
-        K("exists_r","",A(Hol_preterm.t,S N),
+        K("prover.exists_r","",A(Hol_preterm.t,S N),
           B(fun t p -> Pexists_r(t,p)),
           M(fun ~ok ~ko -> function Pexists_r(t,p) -> ok t p | _ -> ko ()));
       ]

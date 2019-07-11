@@ -36,7 +36,7 @@ let print_hide_coercions fmt tm =
 (*add_coercion `real_of_num`;;*)
 add_coercion `int_of_num`;;
 add_coercion `real_of_int`;;
-add_coercion `ring_carrier`;;
+(* add_coercion `ring_carrier`;; *)
 
 (* ------------------------------------------------------------------------- *)
 (* Install the parser.                                                       *)

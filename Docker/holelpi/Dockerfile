@@ -36,12 +36,23 @@ RUN apt-get update && \
 
 USER opam
 
-RUN eval `opam config env` && \
-    opam update && \
-    opam switch create 4.07.0 ocaml-base-compiler.4.07.0 && \
-    opam pin camlp5 7.06 && \
-    opam pin add elpi git+https://github.com/lpcic/elpi && \
-    opam install num camlp5 elpi
+RUN opam update && \
+    opam switch create 4.07.1 ocaml-base-compiler.4.07.1
+
+RUN eval `opam config env` && opam update && \
+    opam install num camlp5
+
+WORKDIR /home/opam/opam-repository
+RUN git pull && opam update && opam upgrade
+RUN opam pin add elpi git+https://github.com/lpcic/elpi
+RUN opam install elpi
+
+### RUN eval `opam config env` && opam update
+### RUN opam switch create 4.07.0 ocaml-base-compiler.4.07.0
+### RUN opam pin camlp5 7.06 && \
+###     opam pin add elpi git+https://github.com/lpcic/elpi && \
+###     opam install num camlp5 elpi
+### RUN eval `opam config env` && opam update
 
 ## ----------------------------------------------------------------------------
 ## Install Dmtcp (version 2018-11-12).

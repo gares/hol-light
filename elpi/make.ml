@@ -192,7 +192,7 @@ end = struct
   module Cprover = struct
 
 type proof =
-   | Pand_l    of  proof
+   | Pand_l    of  preterm * preterm * proof
    | Pand_r    of  proof * proof
    | Por_l     of  preterm * preterm * proof * proof
    | Por1_r    of  preterm * proof
@@ -212,9 +212,9 @@ let t = AlgebraicData.declare {
       doc = "The algebraic data type of first order proofs";
       pp = (fun fmt t -> Format.fprintf fmt "%s" "TODO");
       constructors = [
-        K("prover.and_l","",S N,
-          B(fun x -> Pand_l x),
-          M(fun ~ok ~ko -> function Pand_l x -> ok x | _ -> ko ()));
+        K("prover.and_l","",A(Hol_preterm.t,A(Hol_preterm.t,S N)),
+          B(fun a b x -> Pand_l (a,b,x)),
+          M(fun ~ok ~ko -> function Pand_l(a,b,x) -> ok a b x | _ -> ko ()));
         K("prover.and_r","",S (S N),
           B(fun x y -> Pand_r(x,y)),
           M(fun ~ok ~ko -> function Pand_r(x,y) -> ok x y | _ -> ko ()));

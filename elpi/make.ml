@@ -9,11 +9,13 @@ let () = Quotation.add "elp" (Quotation.ExStr (fun _ s ->
   "Hol_elpi.quotation \""^String.escaped s^"\""));;
 
 (* Antiquotation {{.. ^X .. }} *)
-let antiquotation_tag = " elpi "
+let antiquotation_tag = "_elpi_"
+let tag_len = String.length antiquotation_tag
+
 let () = reserve_words ["^"];;
 let () = install_parser ("elpi",(function
-  | Resword "^" :: Ident v :: rest ->
-      Varp(antiquotation_tag^v,Ptycon("",[])), rest
+  | Resword "^" :: Ident v :: rest -> 
+       Varp(antiquotation_tag^v,Ptycon("",[])), rest
   | _ -> raise Noparse )) ;;
 
 set_jrh_lexer;;
@@ -89,22 +91,29 @@ end = struct
     open FlexibleData
 
     module UV2STV = Map(struct
-      type t = int
-      let compare x y = x - y
-      let pp fmt i = Format.fprintf fmt "%d" i
-      let show = string_of_int
+      type t = string
+      let compare x y = String.compare x y
+      let pp fmt i = Format.fprintf fmt "%s" i
+      let show x = x
     end)
 
     let stv = ref 0
-    let incr_get r = incr r; !r
+    let incr_get r = incr r; "?" ^ string_of_int !r
 
-    let record_Stv k state =
+    let record_uvar_Utv k state =
       State.update_return UV2STV.uvmap state (fun m ->
-        try m, Stv (UV2STV.host k m)
+        try m, Utv (UV2STV.host k m)
         with Not_found ->
           let j = incr_get stv in
-          UV2STV.add k j m, Stv j)
-
+          UV2STV.add k j m, Utv j)
+(*
+    let record_Utv_uvar k state =
+      try state, RawData.mkUnifVar (UV2STV.elpi k (State.get UV2STV.uvmap state)) ~args:[] state, []
+      with Not_found ->
+        let state, flex = FlexibleData.Elpi.make ~lvl:0 state in
+        let state = State.update UV2STV.uvmap state (UV2STV.add flex k) in
+        state, RawData.mkUnifVar (UV2STV.elpi k (State.get UV2STV.uvmap state)) ~args:[] state, []
+*)
     let t = AlgebraicData.declare {
       ty = TyName "pretype";
       doc = "The algebraic data type of pretypes";
@@ -112,7 +121,11 @@ end = struct
       constructors = [
         K("uty","User type variable",A(BuiltInData.string,N),
            B (fun s -> Utv s),
-           M (fun ~ok ~ko -> function (Utv s) -> ok s | _ -> ko ()));
+           MS (fun ~ok ~ko -> function
+             | (Utv s) -> fun state ->
+                 if s.[0] = '?' then state, RawData.mkDiscard, []
+                 else ok s state
+             | _ -> ko));
         K("ptycon","Type constructor",A(BuiltInData.string,C(BuiltInData.list, N)),
            B (fun s l -> Ptycon(s,l)),
            M (fun ~ok ~ko -> function (Ptycon(s,l)) -> ok s l | _ -> ko ()));
@@ -120,7 +133,7 @@ end = struct
            B (fun i -> Stv i),
            M (fun ~ok ~ko -> function (Stv i) -> ok i | _ -> ko ()));
         K("uvar","",A(uvar,N),
-           BS (fun (k,_) state -> record_Stv k state),         
+           BS (fun (k,_) state -> record_uvar_Utv k state),         
            M (fun ~ok ~ko _ -> ko ()))
       ]
     }
@@ -136,8 +149,6 @@ end = struct
 
   end = struct
 
-    let tag_len = String.length antiquotation_tag
-
     open BuiltInPredicate;;
     let elpi_string_of_preterm x = string_of_term (unsafe_term_of_preterm x);;
 
@@ -149,13 +160,13 @@ end = struct
         K("varp","Variable",A(BuiltInData.string,A(Hol_pretype.t,N)),
            B (fun s ty -> Varp(s,ty)),
            MS (fun ~ok ~ko -> function
-              | Varp(s,ty) -> fun state -> (* TODO: fix MS in elpi (data.ml:compile_matcher_ko) *)
-                  (*let len_s = String.length s in
+              | Varp(s,ty) -> fun state ->
+                  let len_s = String.length s in
                   if len_s > tag_len && String.sub s 0 tag_len = antiquotation_tag then
                     let text = String.sub s tag_len (len_s - tag_len) in
-                    let hack_state, t = Quotation.lp ~depth:0 (*TODO:wrong*) state Ast.(Loc.initial "(antiquot)") text in
+                    let state, t = Quotation.lp ~depth:0 (*TODO:wrong*) state Ast.(Loc.initial "(antiquot)") text in
                     state, t, []
-                  else*)
+                  else
                     ok s ty state
               | _ -> ko));
         K("constp","Constant",A(BuiltInData.string,A(Hol_pretype.t, N)),
@@ -248,6 +259,14 @@ let t = AlgebraicData.declare {
   (* ========================== quotations ========================== *)
 
   let () = Quotation.set_default_quotation (fun ~depth st loc txt ->
+    let ast = parse_term txt in
+    let ast = preterm_of_term ast in
+    let st, t, l = Hol_preterm.t.Conversion.embed ~depth [] RawData.no_constraints st ast in
+    assert (l = []);
+    st, t)
+  ;;
+
+  let () = Quotation.register_named_quotation "raw" (fun ~depth st loc txt ->
     let ast, l = parse_preterm (lex (explode txt)) in
     if l <> [] then failwith "Unparsed input in quotation";
     let st, t, l = Hol_preterm.t.Conversion.embed ~depth [] RawData.no_constraints st ast in
@@ -681,6 +700,7 @@ end
 
 (* little test *)
 let () = Hol_elpi.(query "main");;
+let () = Hol_elpi.(query "hol2prover {{ a /\ b ==> c \/ !x:A. x = x ==> ?y:A. x = y /\ F  }} P");;
 
 let _ : thm = prove (`0 = 0`, Hol_elpi.prove_tac)
 

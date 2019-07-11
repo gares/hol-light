@@ -29,6 +29,31 @@ close-coercion (pr S T) (coercion S CT) :-
 prove (combp (combp (constp "=" _) X) X) Thm :-
   hol.rule.refl X Thm.
 
+pred hol2prover i:preterm, o:prover.formula preterm preterm.
+
+hol2prover {{ ^A /\ ^B }} (A1 prover.and B1) :-
+  hol2prover A A1,
+  hol2prover B B1.
+
+hol2prover {{ ^A \/ ^B }} (A1 prover.or B1) :-
+  hol2prover A A1,
+  hol2prover B B1.
+
+hol2prover {{ ^A ==> ^B }} (A1 prover.imp B1) :-
+  hol2prover A A1,
+  hol2prover B B1.
+
+hol2prover {{ F }} prover.bottom.
+
+hol2prover {{ ! ^V . ^B }} (prover.forall F1) :-
+  pi x\ ptmcopy V x => ptmcopy B (F x), ptmcopy x x => hol2prover (F x) (F1 x).
+
+hol2prover {{ ? ^V . ^B }} (prover.exists F1) :-
+  pi x\ ptmcopy V x => ptmcopy B (F x), ptmcopy x x => hol2prover (F x) (F1 x).
+
+hol2prover X (prover.atom X).
+
+
 /*
 % terms %%%%%%%%%%%%%%%%
 

@@ -178,40 +178,68 @@ end = struct
   module Cprover = struct
 
 type proof =
-   | Pand_l    :  proof -> proof
-   | Pand_r    :  proof * proof -> proof
-   | Por_l     :  preterm * preterm * proof * proof -> proof
-   | Por1_r    :  preterm * proof -> proof
-   | Por2_r    :  preterm * proof -> proof
-   | Porc_r    :  proof -> proof
-   | Pex_falso :  proof
-   | Pinitial  :  preterm -> proof
-   | Pimp_l    :  proof * proof -> proof
-   | Pimp_r    :  preterm * proof -> proof
-   | Pforall_l :  proof -> proof
-   | Pexists_r :  preterm * proof -> proof
-   | Pforall_r :  preterm * preterm * proof -> proof
-   | Pexists_l :  preterm * preterm * proof -> proof
+   | Pand_l    of  proof
+   | Pand_r    of  proof * proof
+   | Por_l     of  preterm * preterm * proof * proof
+   | Por1_r    of  preterm * proof
+   | Por2_r    of  preterm * proof
+   | Porc_r    of  proof
+   | Pex_falso 
+   | Pinitial  of  preterm
+   | Pimp_l    of  proof * proof
+   | Pimp_r    of  preterm * proof
+   | Pforall_l of  proof
+   | Pforall_r of  preterm * preterm * proof
+   | Pexists_l of  preterm * preterm * proof
+   | Pexists_r of  preterm * proof
 
 let t = AlgebraicData.declare {
-      ty = TyName "preterm";
-      doc = "The algebraic data type of preterms";
+      ty = TyName "proof";
+      doc = "The algebraic data type of first order proofs";
       pp = (fun fmt t -> Format.fprintf fmt "%s" "TODO");
       constructors = [
-        K("and_l","",S N,B(fun x -> Pand_l x),M(fun ~ok ~ko -> function Pand_l x -> ok x | _ -> ko ()));
-        K("and_r","",S (S N),B(fun x y -> Pand_r(x,y)),M(fun ~ok ~ko -> function Pand_r(x,y) -> ok x y | _ -> ko ()));
-        K("or_l","",A(Hol_preterm.t,A(Hol_preterm.t,S(S N))),B(fun x -> x),M(fun ~ok ~ko -> function x -> ok x | _ -> ko ()));
-        K("or1_r","",A(Hol_preterm.t,S N),B(fun x -> x),M(fun ~ok ~ko -> function x -> ok x | _ -> ko ()));
-        K("or2_r","",A(Hol_preterm.t,S N),B(fun x -> x),M(fun ~ok ~ko -> function x -> ok x | _ -> ko ()));
-        K("orc_r","",S N,B(fun x -> x),M(fun ~ok ~ko -> function x -> ok x | _ -> ko ()));
-        K("ex-falso","",N,B(Pex_falso),M(fun ~ok ~ko -> function x -> ok x | _ -> ko ()));
-        K("initial","",A(Hol_preterm.t,N),B(fun x -> x),M(fun ~ok ~ko -> function x -> ok x | _ -> ko ()));
-        K("imp_l","",S (S N),B(fun x -> x),M(fun ~ok ~ko -> function x -> ok x | _ -> ko ()));
-        K("imp_r","",A(Hol_preterm.t,S N),B(fun x -> x),M(fun ~ok ~ko -> function x -> ok x | _ -> ko ()));
-        K("forall_l","",S N,B(fun x -> x),M(fun ~ok ~ko -> function x -> ok x | _ -> ko ()));
-        K("nforall_r","",A(Hol_preterm.t,A(Hol_preterm.t,S N)),B(fun x -> x),M(fun ~ok ~ko -> function x -> ok x | _ -> ko ()));
-        K("nexists_l","",A(Hol_preterm.t,A(Hol_preterm.t,S N)),B(fun x -> x),M(fun ~ok ~ko -> function x -> ok x | _ -> ko ()));
-        K("exists_r","",A(Hol_preterm.t,S N),B(fun x -> x),M(fun ~ok ~ko -> function x -> ok x | _ -> ko ()));
+        K("and_l","",S N,
+          B(fun x -> Pand_l x),
+          M(fun ~ok ~ko -> function Pand_l x -> ok x | _ -> ko ()));
+        K("and_r","",S (S N),
+          B(fun x y -> Pand_r(x,y)),
+          M(fun ~ok ~ko -> function Pand_r(x,y) -> ok x y | _ -> ko ()));
+        K("or_l","",A(Hol_preterm.t,A(Hol_preterm.t,S(S N))),
+          B(fun t1 t2 p1 p2 -> Por_l(t1,t2,p1,p2)),
+          M(fun ~ok ~ko -> function Por_l(t1,t2,p1,p2) -> ok t1 t2 p1 p2 | _ -> ko ()));
+        K("or1_r","",
+          A(Hol_preterm.t,S N),B(fun t p-> Por1_r(t,p)),
+          M(fun ~ok ~ko -> function Por1_r(t,p) -> ok t p | _ -> ko ()));
+        K("or2_r","",A(Hol_preterm.t,S N),
+          B(fun t p -> Por2_r(t,p)),
+          M(fun ~ok ~ko -> function Por2_r(t,p) -> ok t p | _ -> ko ()));
+        K("orc_r","",S N,
+          B(fun x -> Porc_r x),
+          M(fun ~ok ~ko -> function Porc_r x -> ok x | _ -> ko ()));
+        K("ex-falso","",N,
+          B(Pex_falso),
+          M(fun ~ok ~ko -> function Pex_falso -> ok | _ -> ko ()));
+        K("initial","",A(Hol_preterm.t,N),
+          B(fun x -> Pinitial x),
+          M(fun ~ok ~ko -> function Pinitial x -> ok x | _ -> ko ()));
+        K("imp_l","",S (S N),
+          B(fun p1 p2 -> Pimp_l(p1,p2)),
+          M(fun ~ok ~ko -> function Pimp_l(p1,p2) -> ok p1 p2 | _ -> ko ()));
+        K("imp_r","",A(Hol_preterm.t,S N),
+          B(fun t p -> Pimp_r(t,p)),
+          M(fun ~ok ~ko -> function Pimp_r(t,p) -> ok t p | _ -> ko ()));
+        K("forall_l","",S N,
+          B(fun x -> Pforall_l x),
+          M(fun ~ok ~ko -> function Pforall_l x -> ok x | _ -> ko ()));
+        K("nforall_r","",A(Hol_preterm.t,A(Hol_preterm.t,S N)),
+          B(fun t1 t2 p -> Pforall_r(t1,t2,p)),
+          M(fun ~ok ~ko -> function Pforall_r(t1,t2,p) -> ok t1 t2 p | _ -> ko ()));
+        K("nexists_l","",A(Hol_preterm.t,A(Hol_preterm.t,S N)),
+          B(fun t1 t2 p -> Pexists_l(t1,t2,p)),
+          M(fun ~ok ~ko -> function Pexists_l(t1,t2,p) -> ok t1 t2 p | _ -> ko ()));
+        K("exists_r","",A(Hol_preterm.t,S N),
+          B(fun t p -> Pexists_r(t,p)),
+          M(fun ~ok ~ko -> function Pexists_r(t,p) -> ok t p | _ -> ko ()));
       ]
 }
 

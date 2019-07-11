@@ -17,7 +17,7 @@ kind formula type -> type -> type.
 
 type and, or, imp       formula I A -> formula I A -> formula I A.
 %type neg               formula I A -> formula I A.
-type forall, exists     (I -> formula I A) -> formula I A.
+type forall, exists     I -> (I -> formula I A) -> formula I A.
 type bottom             formula I A.
 type atom               A -> formula I A.
 
@@ -142,91 +142,23 @@ add_copies N A L [A|K] :-
 
 pred amplify_forall i:int, i:list (formula I A), o:list (formula I A).
 amplify_forall _N [] [].
-amplify_forall N [forall A|Gamma] Gamma2 :-
+amplify_forall N [forall I A|Gamma] Gamma2 :-
     amplify_forall N Gamma Gamma1,
-    add_copies N (forall A) Gamma1 Gamma2.
+    add_copies N (forall I A) Gamma1 Gamma2.
 amplify_forall N [A|Gamma] [A|Gamma1] :-
     amplify_forall N Gamma Gamma1.
 
 pred amplify_exists i:int, i:list (formula I A), o:list (formula I A).
 amplify_exists _N [] [].
-amplify_exists N [exists A|Delta] Delta2 :-
+amplify_exists N [exists I A|Delta] Delta2 :-
     amplify_exists N Delta Delta1,
-    add_copies N (exists A) Delta1 Delta2.
+    add_copies N (exists I A) Delta1 Delta2.
 amplify_exists N [A|Delta] [A|Delta1] :-
     amplify_exists N Delta Delta1.
 
 pred start o:proof I A, i:list (formula I A), i:list (formula I A).
 start P H C :- search ff P (H --> C).
-%% ----------------------------------------------------------------------------
-%% Nominal variant of forall_r and exists_l proof constructors.
-%% ----------------------------------------------------------------------------
 
-type  nforall_r  I -> (formula I A) -> proof I A -> proof I A.
-type  nexists_l  I -> (formula I A) -> proof I A -> proof I A.
-
-%% ----------------------------------------------------------------------------
-%% Translation to nomial proofs.
-%% ----------------------------------------------------------------------------
-
-pred nproof i:proof I A, o:proof I A.
-
-% type  and_l     proof -> proof.
-nproof (and_l P) (and_l Q) :-
-    nproof P Q.
-
-%type  and_r     proof -> proof -> proof.
-nproof (and_r P1 P2) (and_r Q1 Q2) :-
-    nproof P1 Q1,
-    nproof P2 Q2.
-
-%type  or_l      form -> form -> proof -> proof -> proof.
-nproof (or_l A B P1 P2) (or_l A B Q1 Q2) :-
-    nproof P1 Q1,
-    nproof P2 Q2.
-
-%type  or1_r     form -> proof -> proof.
-%type  or2_r     form -> proof -> proof.
-%type  orc_r     proof -> proof.
-
-nproof (orc_r P) (orc_r Q) :-
-    nproof P Q.
-
-%type  ex-falso  proof.
-nproof ex-falso ex-falso.
-
-%type  initial   form -> proof.
-nproof (initial A) (initial A).
-
-%type  imp_l     proof -> proof -> proof.
-nproof (imp_l P1 P2) (imp_l Q1 Q2) :-
-    nproof P1 Q1,
-    nproof P2 Q2.
-
-%type  imp_r     form -> proof -> proof.
-nproof (imp_r A P) (imp_r A Q) :-
-    nproof P Q.
-
-%type  forall_l  proof -> proof.
-nproof (forall_l P) (forall_l Q) :-
-    nproof P Q.
-
-%type  exists_r  i -> proof -> proof.
-nproof (exists_r X P) (exists_r X Q) :-
-    nproof P Q.
-
-
-% type  forall_r  (i -> form) -> (i -> proof) -> proof.
-
-type tvar int -> i.
-
-nproof (forall_r A P) (nforall_r (tvar N) (A X) (P X)) :-
-    new_int N, X = tvar N.
-
-%type  exists_l  (i -> form) -> (i -> proof) -> proof.
-
-nproof (exists_l A P) (nexists_l (tvar N) (A X) (P X)) :-
-    new_int N, X = tvar N.
 
 %% ----------------------------------------------------------------------------
 %% Tests.
@@ -247,8 +179,7 @@ test :-
     std.spy(start P [atom x]  [atom x]), !,
     std.spy(start P2 [bottom]  [bottom]), !,
     std.spy(start P4 []  [(atom x or ((atom x) imp bottom))]), !,
-    std.spy(start P3 []  [exists x\ (atom (d x)) imp (forall y\ atom (d y))]),
-    std.spy(nproof P3 P3N).
+    std.spy(start P3 []  [exists _ x\ (atom (d x)) imp (forall _ y\ atom (d y))]).
 
 }
 

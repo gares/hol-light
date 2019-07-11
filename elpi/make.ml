@@ -549,7 +549,7 @@ end
       failwith ("elpi: " ^ Elpi.API.Ast.Loc.show loc ^ ": " ^ msg)
   ;;
 
-  let hol () = compile_files ["elpi/pre_hol.elpi"; "elpi/elab.elpi"; "elpi/algebra.elpi"; "elpi/hol.elpi"];;
+  let hol () = compile_files ["elpi/pre_hol.elpi"; "elpi/elab.elpi"; "elpi/algebra.elpi"; "elpi/cprover.elpi"; "elpi/hol.elpi"];;
 
   type debug = On of string list | Off
 

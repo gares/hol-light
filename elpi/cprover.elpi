@@ -156,8 +156,8 @@ amplify_exists N [exists A|Delta] Delta2 :-
 amplify_exists N [A|Delta] [A|Delta1] :-
     amplify_exists N Delta Delta1.
 
-pred start o:proof I A, i:formula I A.
-start P F :- search ff P ([] --> [F]).
+pred start o:proof I A, i:list (formula I A), i:list (formula I A).
+start P H C :- search ff P (H --> C).
 %% ----------------------------------------------------------------------------
 %% Nominal variant of forall_r and exists_l proof constructors.
 %% ----------------------------------------------------------------------------
@@ -243,13 +243,12 @@ type x form.
 type d i -> form.
 
 pred test.
-test :- true /*
-    std.spy(start P ([atom x] --> [atom x])), !,
-    std.spy(start P2 ([bottom] --> [bottom])), !,
-    std.spy(start P4 ([] --> [(atom x or ((atom x) imp bottom))])), !,
-    std.spy(start P3 ([] --> [exists x\ (atom (d x)) imp (forall y\ atom (d y))])),
-    std.spy(nproof P3 P3N)*/
-    .
+test :-
+    std.spy(start P [atom x]  [atom x]), !,
+    std.spy(start P2 [bottom]  [bottom]), !,
+    std.spy(start P4 []  [(atom x or ((atom x) imp bottom))]), !,
+    std.spy(start P3 []  [exists x\ (atom (d x)) imp (forall y\ atom (d y))]),
+    std.spy(nproof P3 P3N).
 
 }
 

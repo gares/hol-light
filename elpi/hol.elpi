@@ -46,19 +46,23 @@ hol2prover {{ ^A ==> ^B }} (A1 prover.imp B1) :-
 hol2prover {{ F }} prover.bottom.
 
 hol2prover {{ ! ^V . ^B }} (prover.forall F1) :-
-  pi x\ ptmcopy V x => ptmcopy B (F x), ptmcopy x x => hol2prover (F x) (F1 x).
+  pi x\ ptmcopy V x => ptmcopy B (F x), 
+        ptmcopy x x => hol2prover (F x) (F1 x).
 
 hol2prover {{ ? ^V . ^B }} (prover.exists F1) :-
-  pi x\ ptmcopy V x => ptmcopy B (F x), ptmcopy x x => hol2prover (F x) (F1 x).
+  pi x\ ptmcopy V x => ptmcopy B (F x),
+        ptmcopy x x => hol2prover (F x) (F1 x).
 
 hol2prover X (prover.atom X).
 
 
-pred search i:preterm, o:prover.proof preterm preterm.
-search T NP :-
-  hol2prover T T1,
-  prover.start P T1,
-  prover.nproof P NP.
+pred search i:list preterm, i:preterm, o:prover.proof preterm preterm.
+search H C NP :- std.do! [
+  hol2prover C C1,
+  std.map H hol2prover H1,
+  prover.start P H1 [C1],
+  prover.nproof P NP
+].
 
 /*
 % terms %%%%%%%%%%%%%%%%

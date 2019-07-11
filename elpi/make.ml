@@ -52,7 +52,7 @@ module Hol_elpi : sig
   val step : tactic
 
   (* calls cprover *)
-  val search : term -> tactic
+  val search : term list -> term -> tactic
         
 end = struct 
 
@@ -698,13 +698,14 @@ end
     else elaborate p
   ;;
 
-  let search concl =
+  let search hyps concl =
     let proof, () = run_predicate ~typecheck:false (hol ())
       (Query.Query {
         predicate = "search";
-        arguments = D(Hol_preterm.t,preterm_of_term concl,
+        arguments = D(BuiltInData.list Hol_preterm.t,List.map preterm_of_term hyps,
+                    D(Hol_preterm.t,preterm_of_term concl,
                     Q(Cprover.t,"P",
-                    N)) })
+                    N))) })
     in
       Cprover.reconstruct proof            
 ;;

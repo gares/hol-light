@@ -35,6 +35,7 @@ type  and_l     formula I A -> formula I A -> proof I A -> proof I A.
 type  and_r     proof I A -> proof I A -> proof I A.
 
 type  or_l      formula I A -> formula I A -> proof I A -> proof I A -> proof I A.
+%% TODO il primo argomento non serve in or1_r e or2_r.
 type  or1_r     formula I A -> proof I A -> proof I A.
 type  or2_r     formula I A -> proof I A -> proof I A.
 type  orc_r     proof I A -> proof I A.
@@ -44,6 +45,7 @@ type  ex-falso  proof I A.
 type  initial   (formula I A) -> proof I A.
 
 type  imp_l     proof I A -> proof I A -> proof I A.
+%% TODO: il primo argomento di imp_r non serve.
 type  imp_r     formula I A -> proof I A -> proof I A.
 
 type  forall_l  proof I A -> proof I A.
@@ -158,12 +160,13 @@ amplify_exists N [A|Delta] [A|Delta1] :-
 
 pred start o:proof I A, i:seq I A.
 start P Seq :- search ff P Seq.
+
 %% ----------------------------------------------------------------------------
 %% Nominal variant of forall_r and exists_l proof constructors.
 %% ----------------------------------------------------------------------------
 
-type  nforall_r  I -> (formula I A) -> proof I A -> proof I A.
-type  nexists_l  I -> (formula I A) -> proof I A -> proof I A.
+type  nforall_r  I -> formula I A -> proof I A -> proof I A.
+type  nexists_l  I -> formula I A -> proof I A -> proof I A.
 
 %% ----------------------------------------------------------------------------
 %% Translation to nomial proofs.

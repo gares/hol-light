@@ -17,7 +17,7 @@ kind formula type -> type -> type.
 
 type and, or, imp       formula I A -> formula I A -> formula I A.
 %type neg               formula I A -> formula I A.
-type forall, exists     (I -> formula I A) -> formula I A.
+type forall, exists     I -> (I -> formula I A) -> formula I A.
 type bottom             formula I A.
 type atom               A -> formula I A.
 
@@ -26,39 +26,41 @@ infixl and 5.
 infixr imp 6.
 infix -->   3.
 
-kind  seq   type -> type -> type.
-type  -->   list (formula I A) -> list (formula I A) -> seq I A.
+kind  seq   type -> type.
+type  -->   list (formula I A) -> list (formula I A) -> seq (formula I A).
 
 kind  proof     type -> type -> type.
 
-type  and_l     formula I A -> formula I A -> proof I A -> proof I A.
+type  and_l     A -> A -> proof I A -> proof I A.
 type  and_r     proof I A -> proof I A -> proof I A.
 
-type  or_l      formula I A -> formula I A -> proof I A -> proof I A -> proof I A.
+
 %% TODO il primo argomento non serve in or1_r e or2_r.
-type  or1_r     formula I A -> proof I A -> proof I A.
-type  or2_r     formula I A -> proof I A -> proof I A.
+type  or_l      A -> A -> proof I A -> proof I A -> proof I A.
+type  or1_r     A -> proof I A -> proof I A.
+type  or2_r     A -> proof I A -> proof I A.
+
 type  orc_r     proof I A -> proof I A.
 
 type  ex-falso  proof I A.
 
-type  initial   (formula I A) -> proof I A.
+type  initial   (A) -> proof I A.
 
-type  imp_l     proof I A -> proof I A -> proof I A.
+type  imp_l     (A) -> (A) -> proof I A -> proof I A -> proof I A.
 %% TODO: il primo argomento di imp_r non serve.
-type  imp_r     formula I A -> proof I A -> proof I A.
+type  imp_r     A -> proof I A -> proof I A.
 
-type  forall_l  proof I A -> proof I A.
-type  exists_r  i -> proof I A -> proof I A.
+type  forall_l  (A) -> (A) -> proof I A -> proof I A.
+type  forall_r  (I -> A) -> (I -> proof I A) -> proof I A.
 
-type  forall_r  (i -> formula I A) -> (i -> proof I A) -> proof I A.
-type  exists_l  (i -> formula I A) -> (i -> proof I A) -> proof I A.
+type  exists_l  (I -> A) -> (I -> proof I A) -> proof I A.
+type  exists_r  I -> proof I A -> proof I A.
 
 % TODO: Check this.
 pred memb i:formula I A, i:list (formula I A).
 memb A L :- std.mem L A.
 
-pred search i:bool, o:proof I A, i:seq I A.
+pred search i:bool, o:proof I (formula I A), i:seq (formula I A).
 
 %%% Step 1.
 
@@ -74,7 +76,7 @@ search S (and_r P1 P2) (Gamma --> Delta) :-
     search S P1 (Gamma --> [A|Delta1]),
     search S P2 (Gamma --> [B|Delta1]).
 
-search S (imp_l P1 P2) (Gamma --> Delta) :-
+search S (imp_l A B P1 P2) (Gamma --> Delta) :-
     memb_and_rest (A imp B) Gamma Gamma1,
     search S P1 (Gamma1 --> [A|Delta]),
     search S P2 ([B|Gamma1] --> Delta).
@@ -84,11 +86,11 @@ search S (imp_r A P) (Gamma --> Delta) :-
     search S P ([A|Gamma] --> [B|Delta1]).
 
 search S (forall_r A P) (Gamma --> Delta) :-
-    memb_and_rest (forall A) Delta Delta1,
+    memb_and_rest (forall _ A) Delta Delta1,
     std.spy(pi T\ search S (P T) (Gamma --> [A T|Delta1])).
 
 search S (exists_l A P) (Gamma --> Delta) :-
-    memb_and_rest (exists A) Gamma Gamma1,
+    memb_and_rest (exists _ A) Gamma Gamma1,
     pi T\ search S (P T) ([A T|Gamma1] --> Delta).
 
 search _S ex-falso (Gamma --> _Delta) :-
@@ -108,19 +110,19 @@ search ff P Seq :-
 
 %%% Step 2
 
-search tt (forall_l P) (Gamma --> Delta) :-
-    memb_and_rest (forall A) Gamma Gamma1,
+search tt (forall_l (atom T_) (A T_) P) (Gamma --> Delta) :-
+    memb_and_rest (forall _ A) Gamma Gamma1,
     search tt P ([A T_|Gamma1] --> Delta).
 
 search tt (exists_r T P) (Gamma --> Delta) :-
-    memb_and_rest (exists A) Delta Delta1,
+    memb_and_rest (exists _ A) Delta Delta1,
     search tt P (Gamma --> [A T|Delta1]).
 
 %% ----------------------------------------------------------------------------
 %% Iterative deepening.
 %% ----------------------------------------------------------------------------
 
-pred nsearch i:int, o:proof I A, i:seq I A.
+pred nsearch i:int, o:proof I (formula I A), i:seq (formula I A).
 nsearch N P Seq :- N > 5, !, halt "too deep".
 nsearch N P Seq :- amplify N Seq ASeq, search tt P ASeq, !.
 nsearch N P Seq :- M is N + 1, print "Search at depth " M, nsearch M P Seq.
@@ -129,7 +131,7 @@ nsearch N P Seq :- M is N + 1, print "Search at depth " M, nsearch M P Seq.
 %% Amplify.
 %% ----------------------------------------------------------------------------
 
-pred amplify i:int, i:seq I A, o:seq I A.
+pred amplify i:int, i:seq (formula I A), o:seq (formula I A).
 amplify 1 Seq Seq.
 amplify N (Gamma1 --> Delta1) (Gamma2 --> Delta2) :-
     N > 1,
@@ -144,22 +146,25 @@ add_copies N A L [A|K] :-
 
 pred amplify_forall i:int, i:list (formula I A), o:list (formula I A).
 amplify_forall _N [] [].
-amplify_forall N [forall A|Gamma] Gamma2 :-
+amplify_forall N [forall I A|Gamma] Gamma2 :-
     amplify_forall N Gamma Gamma1,
-    add_copies N (forall A) Gamma1 Gamma2.
+    add_copies N (forall I A) Gamma1 Gamma2.
 amplify_forall N [A|Gamma] [A|Gamma1] :-
     amplify_forall N Gamma Gamma1.
 
 pred amplify_exists i:int, i:list (formula I A), o:list (formula I A).
 amplify_exists _N [] [].
-amplify_exists N [exists A|Delta] Delta2 :-
+amplify_exists N [exists I A|Delta] Delta2 :-
     amplify_exists N Delta Delta1,
-    add_copies N (exists A) Delta1 Delta2.
+    add_copies N (exists I A) Delta1 Delta2.
 amplify_exists N [A|Delta] [A|Delta1] :-
     amplify_exists N Delta Delta1.
 
-pred start o:proof I A, i:seq I A.
-start P Seq :- search ff P Seq.
+ HEAD
+pred start o:proof I (formula I A), i:list (formula I A), i:list (formula I A).
+start P H C :- search ff P (H --> C).
+
+/*
 
 %% ----------------------------------------------------------------------------
 %% Nominal variant of forall_r and exists_l proof constructors.
@@ -192,6 +197,7 @@ nproof (forall_r A P) (nforall_r (tvar N) (A X) (P X)) :-
 
 nproof (exists_l A P) (nexists_l (tvar N) (A X) (P X)) :-
     new_int N, X = tvar N.
+*/
 
 %% ----------------------------------------------------------------------------
 %% Tests.
@@ -209,11 +215,11 @@ type d i -> form.
 
 pred test.
 test :-
-    std.spy(start P ([atom x] --> [atom x])), !,
-    std.spy(start P2 ([bottom] --> [bottom])), !,
-    std.spy(start P4 ([] --> [(atom x or ((atom x) imp bottom))])), !,
-    std.spy(start P3 ([] --> [exists x\ (atom (d x)) imp (forall y\ atom (d y))])),
-    std.spy(nproof P3 P3N).
+    std.spy(start P  [atom x] [atom x]), !,
+    std.spy(start P2 [bottom] [bottom]), !,
+    std.spy(start P4 [] [(atom x or ((atom x) imp bottom))]), !,
+    std.spy(start P3 []  [exists _ x\ (atom (d x)) imp (forall _ y\ atom (d y))]).
+    %std.spy(nproof P3 P3N).
 
 }
 

@@ -164,6 +164,7 @@ merlin:
 	$(call build,drule.ml)
 	$(call build,tactics.ml)
 	$(call build,elpi/pre_elpi.ml)
+	$(call build,elpi/pcheck.ml)
 	$(call build,elpi/make.ml)
 
 run:

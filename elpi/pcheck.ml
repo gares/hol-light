@@ -1,3 +1,5 @@
+needs "tactics.ml";;
+
 (* ------------------------------------------------------------------------- *)
 (* TODO: I the first argument of "Pimp_r of  preterm * proof" needed?        *)
 (* ------------------------------------------------------------------------- *)
@@ -19,9 +21,8 @@ type proof =
    | Pexists_r of  preterm * proof
    | Pall;;
 
-let rec pcheck : proof -> tactic =
-  function
-    Pinitial a ->
+let rec pcheck = function
+  | Pinitial a ->
       ACCEPT_TAC (ASSUME (term_of_preterm a))
   | Pand_l(a,b,p') ->
       CONJUNCTS_THEN ASSUME_TAC
@@ -39,7 +40,7 @@ let rec pcheck : proof -> tactic =
       let tma = term_of_preterm a
       and tmb = term_of_preterm b in
       let tm = mk_disj(tma,tmb) in
-      let th = ASSUME tm in
+      let th = (ASSUME tm) in
       DISJ_CASES_THEN2
         (fun th -> ASSUME_TAC th THEN pcheck p)
         (fun th -> ASSUME_TAC th THEN pcheck q)
@@ -74,7 +75,7 @@ let rec pcheck : proof -> tactic =
 (* ------------------------------------------------------------------------ *)
 (* Tests                                                                    *)
 (* ------------------------------------------------------------------------ *)
-
+(*
 let ptma = preterm_of_term `a:bool`
 and ptmb = preterm_of_term `b:bool`;;
 
@@ -149,4 +150,5 @@ let DISJLIST = new_definition
 
 let CPROVE_TAC : tactic =
   fun (_,w) -> reconstract (search w);;
+*)
 *)

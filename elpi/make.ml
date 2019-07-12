@@ -1,6 +1,7 @@
 #use "topfind";;
 #require "elpi";;
 needs "elpi/pre_elpi.ml";;
+needs "elpi/pcheck.ml";;
 
 unset_jrh_lexer;;
 
@@ -191,22 +192,6 @@ end = struct
 
   module Cprover = struct
 
-type proof =
-   | Pand_l    of  preterm * preterm * proof
-   | Pand_r    of  proof * proof
-   | Por_l     of  preterm * preterm * proof * proof
-   | Por1_r    of  preterm * proof
-   | Por2_r    of  preterm * proof
-   | Porc_r    of  proof
-   | Pex_falso 
-   | Pinitial  of  preterm
-   | Pimp_l    of  proof * proof
-   | Pimp_r    of  preterm * proof
-   | Pforall_l of  proof
-   | Pforall_r of  preterm * preterm * proof
-   | Pexists_l of  preterm * preterm * proof
-   | Pexists_r of  preterm * proof
-
 let t = AlgebraicData.declare {
       ty = TyName "prover.proof";
       doc = "The algebraic data type of first order proofs";
@@ -236,15 +221,15 @@ let t = AlgebraicData.declare {
         K("prover.initial","",A(Hol_preterm.t,N),
           B(fun x -> Pinitial x),
           M(fun ~ok ~ko -> function Pinitial x -> ok x | _ -> ko ()));
-        K("prover.imp_l","",S (S N),
-          B(fun p1 p2 -> Pimp_l(p1,p2)),
-          M(fun ~ok ~ko -> function Pimp_l(p1,p2) -> ok p1 p2 | _ -> ko ()));
+        K("prover.imp_l","",A(Hol_preterm.t,A(Hol_preterm.t,S (S N))),
+          B(fun t1 t2 p1 p2 -> Pimp_l(t1,t2,p1,p2)),
+          M(fun ~ok ~ko -> function Pimp_l(t1,t2,p1,p2) -> ok t1 t2 p1 p2 | _ -> ko ()));
         K("prover.imp_r","",A(Hol_preterm.t,S N),
           B(fun t p -> Pimp_r(t,p)),
           M(fun ~ok ~ko -> function Pimp_r(t,p) -> ok t p | _ -> ko ()));
-        K("prover.forall_l","",S N,
-          B(fun x -> Pforall_l x),
-          M(fun ~ok ~ko -> function Pforall_l x -> ok x | _ -> ko ()));
+        K("prover.forall_l","",A(Hol_preterm.t,A(Hol_preterm.t,S N)),
+          B(fun t1 t2 p -> Pforall_l(t1,t2,p)),
+          M(fun ~ok ~ko -> function Pforall_l(t1,t2,p) -> ok t1 t2 p | _ -> ko ()));
         K("prover.nforall_r","",A(Hol_preterm.t,A(Hol_preterm.t,S N)),
           B(fun t1 t2 p -> Pforall_r(t1,t2,p)),
           M(fun ~ok ~ko -> function Pforall_r(t1,t2,p) -> ok t1 t2 p | _ -> ko ()));
@@ -256,9 +241,6 @@ let t = AlgebraicData.declare {
           M(fun ~ok ~ko -> function Pexists_r(t,p) -> ok t p | _ -> ko ()));
       ]
 }
-
-  let reconstruct : proof -> tactic =
-    fun _ -> assert false
 
   end
   
@@ -535,7 +517,7 @@ end
       unset_jrh_lexer;
       !: gs +! (Tactics.JML (Tactics.Just (j null_inst)))
     )),
-    DocAbove)
+    DocAbove);
 
   ]
   ;;
@@ -707,7 +689,7 @@ end
                     Q(Cprover.t,"P",
                     N))) })
     in
-      Cprover.reconstruct proof            
+      pcheck proof            
 ;;
 
   set_jrh_lexer;;

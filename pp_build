@@ -29,7 +29,9 @@ sed 's/^needs "equal.ml"/open Lib;; open Fusion;; open Basics;; open Nets;; open
 sed 's/^needs "bool.ml"/open Lib;; open Fusion;; open Basics;; open Nets;; open Printer;; open Preterm;; open Parser;; open Equal;; open Bool/' |\
 sed 's/^needs "drule.ml"/open Lib;; open Fusion;; open Basics;; open Nets;; open Printer;; open Preterm;; open Parser;; open Equal;; open Bool;; open Drule/' |\
 sed 's/^needs "tactics.ml"/open Lib;; open Fusion;; open Basics;; open Nets;; open Printer;; open Preterm;; open Parser;; open Equal;; open Bool;; open Drule;; open Tactics/' |\
+sed 's?^needs "elpi/pcheck.ml";;?open Pcheck;;?' |\
 sed 's?^needs "elpi/pre_elpi.ml"?open Lib;; open Fusion;; open Basics;; open Nets;; open Printer;; open Preterm;; open Parser;; open Equal;; open Bool;; open Drule;; open Tactics;; open Pre_elpi?' |\
+
 
 
 cat >> $TMP

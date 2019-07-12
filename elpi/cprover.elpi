@@ -160,7 +160,6 @@ amplify_exists N [exists I A|Delta] Delta2 :-
 amplify_exists N [A|Delta] [A|Delta1] :-
     amplify_exists N Delta Delta1.
 
- HEAD
 pred start o:proof I (formula I A), i:list (formula I A), i:list (formula I A).
 start P H C :- search ff P (H --> C).
 

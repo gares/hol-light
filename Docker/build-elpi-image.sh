@@ -1,1 +1,3 @@
-docker build -t elpi elpi
+#!/bin/sh
+
+exec docker build -t elpi elpi

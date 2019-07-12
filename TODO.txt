@@ -6,8 +6,8 @@
   - repeat removing from the preterm all the constants in !the_coercions
     `&1` -> `1` (see also #3)
 
-2. Non usare HOAS per il type checking visto che non facciamo mai
-   sostituzioni 
+2. cprover sui pretermini direttamente
+   - oppure pigliare da handbook AR prover intuizionista
 
 3. Round trip printing -> elaboration (necessita #2)
 
@@ -39,6 +39,13 @@
    se il tipo del "castato" e del contesto sono ground. Problema tipico
    nei lemmi di morfismo a proposito delle coercions.
      &x + &x = &(x + x)
+
+4. soft dependent types
+                                          subject, pred, proof
+     `!`   CONS x NIL :: vect 1 (A) `!` = term * term * thm
+     ```   CONS x NIL :: vect 1 (A) ``` = term * term
+
+   use a TT like language in elpi, then convert back to HOL
 
 ----------------------------------------------------
 To Do list

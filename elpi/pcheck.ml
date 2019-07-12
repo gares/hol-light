@@ -4,21 +4,23 @@ needs "tactics.ml";;
 (* TODO: I the first argument of "Pimp_r of  preterm * proof" needed?        *)
 (* ------------------------------------------------------------------------- *)
 
-type proof =
-   | Pand_l    of  preterm * preterm * proof
-   | Pand_r    of  proof * proof
-   | Por_l     of  preterm * preterm * proof * proof
-   | Por1_r    of  preterm * proof
-   | Por2_r    of  preterm * proof
-   | Porc_r    of  proof
+type ('individual,'formula) proof =
+   | Pand_l    of  'formula * 'formula * ('individual,'formula) proof
+   | Pand_r    of  ('individual,'formula) proof * ('individual,'formula) proof
+   | Por_l     of  'formula * 'formula * ('individual,'formula) proof * ('individual,'formula) proof
+   (* TODO il primo argomento non serve in or1_r e or2_r.*)
+   | Por1_r    of  'formula * ('individual,'formula) proof
+   | Por2_r    of  'formula * ('individual,'formula) proof
+   | Porc_r    of  ('individual,'formula) proof
    | Pex_falso
-   | Pinitial  of  preterm
-   | Pimp_l    of  preterm * preterm * proof * proof
-   | Pimp_r    of  preterm * proof
-   | Pforall_l of  preterm * preterm * proof
-   | Pforall_r of  preterm * preterm * proof
-   | Pexists_l of  preterm * preterm * proof
-   | Pexists_r of  preterm * proof
+   | Pinitial  of  'formula
+   | Pimp_l    of  'formula * 'formula * ('individual,'formula) proof * ('individual,'formula) proof
+   (* TODO: il primo argomento di imp_r non serve.*)
+   | Pimp_r    of  'formula * ('individual,'formula) proof
+   | Pforall_l of  'formula * 'formula * ('individual,'formula) proof
+   | Pforall_r of  'individual * 'formula * ('individual,'formula) proof
+   | Pexists_l of  'individual * 'formula * ('individual,'formula) proof
+   | Pexists_r of  'individual * ('individual,'formula) proof
    | Pall;;
 
 let rec pcheck = function

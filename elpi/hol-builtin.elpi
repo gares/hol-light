@@ -652,6 +652,28 @@ type jstop justification.
 % [hol.tac.ap_term_tac G GS J] congruence
 external pred hol.tac.ap_term_tac i:goal, o:list goal, o:justification.
 
+% -------------------- cprover ----------------------------
+
+% The algebraic data type of first order proofs
+kind prover.proof type -> type -> type.
+type prover.and_l A -> A -> prover.proof I A -> prover.proof I A.
+type prover.and_r prover.proof I A -> prover.proof I A ->
+                  prover.proof I A.
+type prover.or_l A -> A -> prover.proof I A -> prover.proof I A ->
+                 prover.proof I A.
+type prover.or1_r A -> prover.proof I A -> prover.proof I A.
+type prover.or2_r A -> prover.proof I A -> prover.proof I A.
+type prover.orc_r prover.proof I A -> prover.proof I A.
+type prover.ex-falso prover.proof I A.
+type prover.initial A -> prover.proof I A.
+type prover.imp_l A -> A -> prover.proof I A -> prover.proof I A ->
+                  prover.proof I A.
+type prover.imp_r A -> prover.proof I A -> prover.proof I A.
+type prover.forall_l A -> A -> prover.proof I A -> prover.proof I A.
+type prover.nforall_r I -> A -> prover.proof I A -> prover.proof I A.
+type prover.nexists_l I -> A -> prover.proof I A -> prover.proof I A.
+type prover.exists_r I -> prover.proof I A -> prover.proof I A.
+
 
 
 

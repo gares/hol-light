@@ -192,24 +192,25 @@ end = struct
 
   module Cprover = struct
 
-let t = AlgebraicData.declare {
-      ty = TyName "prover.proof";
+let t_poly (individual : 'i Conversion.t) (formula : 'f Conversion.t) : (('i,'a) proof Conversion.t)=
+  AlgebraicData.declare {
+      ty = TyApp ("prover.proof",individual.Conversion.ty,[formula.Conversion.ty]);
       doc = "The algebraic data type of first order proofs";
       pp = (fun fmt t -> Format.fprintf fmt "%s" "TODO");
       constructors = [
-        K("prover.and_l","",A(Hol_preterm.t,A(Hol_preterm.t,S N)),
+        K("prover.and_l","",A(formula,A(formula,S N)),
           B(fun a b x -> Pand_l (a,b,x)),
           M(fun ~ok ~ko -> function Pand_l(a,b,x) -> ok a b x | _ -> ko ()));
         K("prover.and_r","",S (S N),
           B(fun x y -> Pand_r(x,y)),
           M(fun ~ok ~ko -> function Pand_r(x,y) -> ok x y | _ -> ko ()));
-        K("prover.or_l","",A(Hol_preterm.t,A(Hol_preterm.t,S(S N))),
+        K("prover.or_l","",A(formula,A(formula,S(S N))),
           B(fun t1 t2 p1 p2 -> Por_l(t1,t2,p1,p2)),
           M(fun ~ok ~ko -> function Por_l(t1,t2,p1,p2) -> ok t1 t2 p1 p2 | _ -> ko ()));
         K("prover.or1_r","",
-          A(Hol_preterm.t,S N),B(fun t p-> Por1_r(t,p)),
+          A(formula,S N),B(fun t p-> Por1_r(t,p)),
           M(fun ~ok ~ko -> function Por1_r(t,p) -> ok t p | _ -> ko ()));
-        K("prover.or2_r","",A(Hol_preterm.t,S N),
+        K("prover.or2_r","",A(formula,S N),
           B(fun t p -> Por2_r(t,p)),
           M(fun ~ok ~ko -> function Por2_r(t,p) -> ok t p | _ -> ko ()));
         K("prover.orc_r","",S N,
@@ -218,29 +219,31 @@ let t = AlgebraicData.declare {
         K("prover.ex-falso","",N,
           B(Pex_falso),
           M(fun ~ok ~ko -> function Pex_falso -> ok | _ -> ko ()));
-        K("prover.initial","",A(Hol_preterm.t,N),
+        K("prover.initial","",A(formula,N),
           B(fun x -> Pinitial x),
           M(fun ~ok ~ko -> function Pinitial x -> ok x | _ -> ko ()));
-        K("prover.imp_l","",A(Hol_preterm.t,A(Hol_preterm.t,S (S N))),
+        K("prover.imp_l","",A(formula,A(formula,S (S N))),
           B(fun t1 t2 p1 p2 -> Pimp_l(t1,t2,p1,p2)),
           M(fun ~ok ~ko -> function Pimp_l(t1,t2,p1,p2) -> ok t1 t2 p1 p2 | _ -> ko ()));
-        K("prover.imp_r","",A(Hol_preterm.t,S N),
+        K("prover.imp_r","",A(formula,S N),
           B(fun t p -> Pimp_r(t,p)),
           M(fun ~ok ~ko -> function Pimp_r(t,p) -> ok t p | _ -> ko ()));
-        K("prover.forall_l","",A(Hol_preterm.t,A(Hol_preterm.t,S N)),
+        K("prover.forall_l","",A(formula,A(formula,S N)),
           B(fun t1 t2 p -> Pforall_l(t1,t2,p)),
           M(fun ~ok ~ko -> function Pforall_l(t1,t2,p) -> ok t1 t2 p | _ -> ko ()));
-        K("prover.nforall_r","",A(Hol_preterm.t,A(Hol_preterm.t,S N)),
+        K("prover.nforall_r","",A(individual,A(formula,S N)),
           B(fun t1 t2 p -> Pforall_r(t1,t2,p)),
           M(fun ~ok ~ko -> function Pforall_r(t1,t2,p) -> ok t1 t2 p | _ -> ko ()));
-        K("prover.nexists_l","",A(Hol_preterm.t,A(Hol_preterm.t,S N)),
+        K("prover.nexists_l","",A(individual,A(formula,S N)),
           B(fun t1 t2 p -> Pexists_l(t1,t2,p)),
           M(fun ~ok ~ko -> function Pexists_l(t1,t2,p) -> ok t1 t2 p | _ -> ko ()));
-        K("prover.exists_r","",A(Hol_preterm.t,S N),
+        K("prover.exists_r","",A(individual,S N),
           B(fun t p -> Pexists_r(t,p)),
           M(fun ~ok ~ko -> function Pexists_r(t,p) -> ok t p | _ -> ko ()));
       ]
 }
+
+  let t = t_poly Hol_preterm.t Hol_preterm.t
 
   end
   
@@ -518,6 +521,10 @@ end
       !: gs +! (Tactics.JML (Tactics.Just (j null_inst)))
     )),
     DocAbove);
+
+    LPDoc "-------------------- cprover ----------------------------";
+
+    MLData (Cprover.t_poly (BuiltInData.poly "I") (BuiltInData.poly "A"));
 
   ]
   ;;

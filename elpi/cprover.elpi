@@ -1,4 +1,9 @@
+
+shorten prover.{ and_l, and_r, or_l, or1_r, or2_r, orc_r, ex-falso, initial,
+                 imp_l, imp_r, forall_l, exists_r, proof }.
+
 namespace prover {
+
 
 %%% ---------------------------------------------------------------------------
 %%% Simple intuitionistic prover.
@@ -29,32 +34,8 @@ infix -->   3.
 kind  seq   type -> type.
 type  -->   list (formula I A) -> list (formula I A) -> seq (formula I A).
 
-kind  proof     type -> type -> type.
-
-type  and_l     A -> A -> proof I A -> proof I A.
-type  and_r     proof I A -> proof I A -> proof I A.
-
-
-%% TODO il primo argomento non serve in or1_r e or2_r.
-type  or_l      A -> A -> proof I A -> proof I A -> proof I A.
-type  or1_r     A -> proof I A -> proof I A.
-type  or2_r     A -> proof I A -> proof I A.
-
-type  orc_r     proof I A -> proof I A.
-
-type  ex-falso  proof I A.
-
-type  initial   (A) -> proof I A.
-
-type  imp_l     (A) -> (A) -> proof I A -> proof I A -> proof I A.
-%% TODO: il primo argomento di imp_r non serve.
-type  imp_r     A -> proof I A -> proof I A.
-
-type  forall_l  (A) -> (A) -> proof I A -> proof I A.
 type  forall_r  (I -> A) -> (I -> proof I A) -> proof I A.
-
 type  exists_l  (I -> A) -> (I -> proof I A) -> proof I A.
-type  exists_r  I -> proof I A -> proof I A.
 
 % TODO: Check this.
 pred memb i:formula I A, i:list (formula I A).

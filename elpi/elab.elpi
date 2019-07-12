@@ -65,11 +65,15 @@ of (varp S _) TY (constp S1 TY) :- overload S S1 CTY, refresh-cpretype CTY TY.
 of (varp S _) TY (constp S TY) :- env S S CTY, refresh-cpretype CTY TY.
 of (varp S _) (@con "num") N :- numeral S N.
 
+pred is_varp o:string, o:pretype.
+
 :name "of:abstraction"
 of (absp (varp S D) F) (@fun [Src,Tgt]) (absp (varp S Src) F1) :-
+  is_varp S Src =>
   (of (varp S D) Src (varp S Src) :- !) =>
     of F Tgt F1.
 of (absp (typing (varp S D) Src) F) (@fun [Src,Tgt]) (absp (varp S Src) F1) :-
+  is_varp S Src =>
   (of (varp S D) Src (varp S Src) :- !) =>
     of F Tgt F1.
 

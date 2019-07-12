@@ -127,7 +127,7 @@ end = struct
            B (fun s -> Utv s),
            MS (fun ~ok ~ko -> function
              | (Utv s) -> fun state ->
-                 if s.[0] = '?' then state, RawData.mkDiscard, []
+                 if s.[0] = '?' && s.[1] != '?' then state, RawData.mkDiscard, []
                  else ok s state
              | _ -> ko));
         K("ptycon","Type constructor",A(BuiltInData.string,C(BuiltInData.list, N)),
@@ -377,6 +377,15 @@ end
   open Notation;;
   open BuiltIn;;
 
+  let pretype_of_type2 t =
+    let t = pretype_of_type t in
+    let rec aux = function
+      | Utv s  as x ->
+         if s.[0] = '?' then Utv ("?" ^ s) else x
+      | Stv _ as x -> x
+      | Ptycon(s,tl) -> Ptycon(s,List.map aux tl) in
+    aux t
+
   let declarations = [
     LPDoc "========================== HOL-Light ===========================";
 
@@ -403,7 +412,7 @@ end
       Easy("lookup the type of known constant"))),
     (fun name _ ~depth:_ ->
        try let ty = get_const_type name in
-         !: (pretype_of_type ty)
+         !: (pretype_of_type2 ty)
        with Failure _ -> raise No_clause)),
     DocNext);
 
@@ -418,7 +427,7 @@ end
       Easy("lookup the interpretations of overloaded constant"))),
     (fun name _ ~depth ->
        let l = mapfilter (fun (x,(s,t)) ->
-               if x = name then s, pretype_of_type t
+               if x = name then s, pretype_of_type2 t
                else fail()) !the_interface in
         !: l)),
     DocNext);
@@ -436,7 +445,7 @@ end
       Out(BuiltInData.list (Elpi.Builtin.pair BuiltInData.string Hol_pretype.t), "coercions",
         Easy("Fetches the list of coercions")),
       (fun _ ~depth ->
-         !: (map (fun (s,(ty,_)) -> s, pretype_of_type ty) !the_coercions))),
+         !: (map (fun (s,(ty,_)) -> s, pretype_of_type2 ty) !the_coercions))),
       DocNext);
 
     LPDoc "-------------------- printing -----------------------------";

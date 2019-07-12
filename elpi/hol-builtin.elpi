@@ -661,15 +661,15 @@ type prover.and_r prover.proof I A -> prover.proof I A ->
                   prover.proof I A.
 type prover.or_l A -> A -> prover.proof I A -> prover.proof I A ->
                  prover.proof I A.
-type prover.or1_r A -> prover.proof I A -> prover.proof I A.
-type prover.or2_r A -> prover.proof I A -> prover.proof I A.
+type prover.or1_r prover.proof I A -> prover.proof I A.
+type prover.or2_r prover.proof I A -> prover.proof I A.
 type prover.orc_r prover.proof I A -> prover.proof I A.
 type prover.ex-falso prover.proof I A.
 type prover.initial A -> prover.proof I A.
 type prover.imp_l A -> A -> prover.proof I A -> prover.proof I A ->
                   prover.proof I A.
-type prover.imp_r A -> prover.proof I A -> prover.proof I A.
-type prover.forall_l A -> A -> prover.proof I A -> prover.proof I A.
+type prover.imp_r prover.proof I A -> prover.proof I A.
+type prover.forall_l I -> A -> prover.proof I A -> prover.proof I A.
 type prover.nforall_r I -> A -> prover.proof I A -> prover.proof I A.
 type prover.nexists_l I -> A -> prover.proof I A -> prover.proof I A.
 type prover.exists_r I -> prover.proof I A -> prover.proof I A.

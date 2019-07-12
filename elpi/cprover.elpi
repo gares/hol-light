@@ -62,7 +62,7 @@ search S (imp_l A B P1 P2) (Gamma --> Delta) :-
     search S P1 (Gamma1 --> [A|Delta]),
     search S P2 ([B|Gamma1] --> Delta).
 
-search S (imp_r A P) (Gamma --> Delta) :-
+search S (imp_r P) (Gamma --> Delta) :-
     memb_and_rest (A imp B) Delta Delta1,
     search S P ([A|Gamma] --> [B|Delta1]).
 
@@ -81,19 +81,28 @@ search S (or_l A B P Q) (Gamma --> Delta) :-
     memb_and_rest (A or B) Gamma Gamma1,
     search S P ([A|Gamma1] --> Delta),
     search S Q ([B|Gamma1] --> Delta).
-
+/*
 search S (orc_r P) (Gamma --> Delta) :-
     memb_and_rest (A or B) Delta Delta1,
     search S P (Gamma --> [A,B|Delta1]).
+*/
+search S (or1_r P) (Gamma --> Delta) :-
+    memb_and_rest (A or B) Delta Delta1,
+    search S P (Gamma --> [A|Delta1]).
+
+search S (or2_r P) (Gamma --> Delta) :-
+    memb_and_rest (A or B) Delta Delta1,
+    search S P (Gamma --> [B|Delta1]).
+
 
 search ff P Seq :-
-    nsearch 1 P Seq.
+    (nsearch 1 P Seq).
 
 %%% Step 2
 
-search tt (forall_l (atom T_) (A T_) P) (Gamma --> Delta) :-
-    memb_and_rest (forall _ A) Gamma Gamma1,
-    search tt P ([A T_|Gamma1] --> Delta).
+search tt (forall_l X (forall V A) P) (Gamma --> Delta) :-
+    memb_and_rest (forall V A) Gamma Gamma1,
+    search tt P ([A X|Gamma1] --> Delta).
 
 search tt (exists_r T P) (Gamma --> Delta) :-
     memb_and_rest (exists _ A) Delta Delta1,
@@ -104,8 +113,8 @@ search tt (exists_r T P) (Gamma --> Delta) :-
 %% ----------------------------------------------------------------------------
 
 pred nsearch i:int, o:proof I (formula I A), i:seq (formula I A).
-nsearch N P Seq :- N > 5, !, halt "too deep".
-nsearch N P Seq :- amplify N Seq ASeq, search tt P ASeq, !.
+nsearch N P Seq :- N > 5, !, fail. % halt "too deep".
+nsearch N P Seq :- std.spy(amplify N Seq ASeq), search tt P ASeq, !.
 nsearch N P Seq :- M is N + 1, print "Search at depth " M, nsearch M P Seq.
 
 %% ----------------------------------------------------------------------------

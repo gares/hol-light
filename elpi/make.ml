@@ -192,7 +192,7 @@ end = struct
 
   module Cprover = struct
 
-let t_poly (individual : 'i Conversion.t) (formula : 'f Conversion.t) : (('i,'a) proof Conversion.t)=
+let t_poly (individual : 'i Conversion.t) (formula : 'f Conversion.t) : (('i,'f) proof Conversion.t)=
   AlgebraicData.declare {
       ty = TyApp ("prover.proof",individual.Conversion.ty,[formula.Conversion.ty]);
       doc = "The algebraic data type of first order proofs";
@@ -207,12 +207,12 @@ let t_poly (individual : 'i Conversion.t) (formula : 'f Conversion.t) : (('i,'a)
         K("prover.or_l","",A(formula,A(formula,S(S N))),
           B(fun t1 t2 p1 p2 -> Por_l(t1,t2,p1,p2)),
           M(fun ~ok ~ko -> function Por_l(t1,t2,p1,p2) -> ok t1 t2 p1 p2 | _ -> ko ()));
-        K("prover.or1_r","",
-          A(formula,S N),B(fun t p-> Por1_r(t,p)),
-          M(fun ~ok ~ko -> function Por1_r(t,p) -> ok t p | _ -> ko ()));
-        K("prover.or2_r","",A(formula,S N),
-          B(fun t p -> Por2_r(t,p)),
-          M(fun ~ok ~ko -> function Por2_r(t,p) -> ok t p | _ -> ko ()));
+        K("prover.or1_r","",S N,
+          B(fun p -> Por1_r(p)),
+          M(fun ~ok ~ko -> function Por1_r(p) -> ok p | _ -> ko ()));
+        K("prover.or2_r","",S N,
+          B(fun p -> Por2_r(p)),
+          M(fun ~ok ~ko -> function Por2_r(p) -> ok p | _ -> ko ()));
         K("prover.orc_r","",S N,
           B(fun x -> Porc_r x),
           M(fun ~ok ~ko -> function Porc_r x -> ok x | _ -> ko ()));
@@ -225,10 +225,10 @@ let t_poly (individual : 'i Conversion.t) (formula : 'f Conversion.t) : (('i,'a)
         K("prover.imp_l","",A(formula,A(formula,S (S N))),
           B(fun t1 t2 p1 p2 -> Pimp_l(t1,t2,p1,p2)),
           M(fun ~ok ~ko -> function Pimp_l(t1,t2,p1,p2) -> ok t1 t2 p1 p2 | _ -> ko ()));
-        K("prover.imp_r","",A(formula,S N),
-          B(fun t p -> Pimp_r(t,p)),
-          M(fun ~ok ~ko -> function Pimp_r(t,p) -> ok t p | _ -> ko ()));
-        K("prover.forall_l","",A(formula,A(formula,S N)),
+        K("prover.imp_r","",S N,
+          B(fun p -> Pimp_r(p)),
+          M(fun ~ok ~ko -> function Pimp_r(p) -> ok p | _ -> ko ()));
+        K("prover.forall_l","",A(individual,A(formula,S N)),
           B(fun t1 t2 p -> Pforall_l(t1,t2,p)),
           M(fun ~ok ~ko -> function Pforall_l(t1,t2,p) -> ok t1 t2 p | _ -> ko ()));
         K("prover.nforall_r","",A(individual,A(formula,S N)),

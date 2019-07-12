@@ -8,16 +8,14 @@ type ('individual,'formula) proof =
    | Pand_l    of  'formula * 'formula * ('individual,'formula) proof
    | Pand_r    of  ('individual,'formula) proof * ('individual,'formula) proof
    | Por_l     of  'formula * 'formula * ('individual,'formula) proof * ('individual,'formula) proof
-   (* TODO il primo argomento non serve in or1_r e or2_r.*)
-   | Por1_r    of  'formula * ('individual,'formula) proof
-   | Por2_r    of  'formula * ('individual,'formula) proof
+   | Por1_r    of  ('individual,'formula) proof
+   | Por2_r    of  ('individual,'formula) proof
    | Porc_r    of  ('individual,'formula) proof
    | Pex_falso
    | Pinitial  of  'formula
    | Pimp_l    of  'formula * 'formula * ('individual,'formula) proof * ('individual,'formula) proof
-   (* TODO: il primo argomento di imp_r non serve.*)
-   | Pimp_r    of  'formula * ('individual,'formula) proof
-   | Pforall_l of  'formula * 'formula * ('individual,'formula) proof
+   | Pimp_r    of   ('individual,'formula) proof
+   | Pforall_l of  'individual * 'formula * ('individual,'formula) proof
    | Pforall_r of  'individual * 'formula * ('individual,'formula) proof
    | Pexists_l of  'individual * 'formula * ('individual,'formula) proof
    | Pexists_r of  'individual * ('individual,'formula) proof
@@ -32,11 +30,11 @@ let rec pcheck = function
       pcheck p'
   | Pand_r(p,q) ->
       CONJ_TAC THENL [pcheck p; pcheck q]
-  | Pimp_r(_,p) ->
+  | Pimp_r(p) ->
       DISCH_TAC THEN pcheck p
-  | Por1_r(_,p) ->
+  | Por1_r(p) ->
       DISJ1_TAC THEN pcheck p
-  | Por2_r(_,p) ->
+  | Por2_r(p) ->
       DISJ2_TAC THEN pcheck p
   | Por_l(a,b,p,q) ->
       let tma = term_of_preterm a
@@ -54,11 +52,11 @@ let rec pcheck = function
       let tm = mk_imp(tma,tmb) in
       let th = ASSUME tm in
       SUBGOAL_THEN tma (ASSUME_TAC o MP th) THENL [pcheck p; pcheck q]
-  | Pforall_l(x,a,p) ->
+  | Pforall_l(x,qf,p) ->
       let tmx = term_of_preterm x
-      and tma = term_of_preterm a in
-      let th = ASSUME tma in
-      ASSUME_TAC (SPEC tmx th)
+      and tmqf = term_of_preterm qf in
+      let th = ASSUME tmqf in
+      ASSUME_TAC (SPEC tmx th) THEN pcheck p
   | Pforall_r (x,_,p) ->
       let tmx = term_of_preterm x in
       X_GEN_TAC tmx THEN pcheck p

@@ -4,5 +4,5 @@
 MNTPATH="$PWD"
 
 exec docker run --rm -it -m 6G -h holelpi \
-       -v '$MNTPATH:/home/opam/work' \
+       -v "$MNTPATH:/home/opam/work" \
        holelpi

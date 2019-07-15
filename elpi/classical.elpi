@@ -1,0 +1,268 @@
+%%% ===========================================================================
+%%% Simple example of classical prover with iterative deepening.
+%%% ===========================================================================
+
+pred memb_and_rest o:A, o:list A, o:list A.
+
+memb_and_rest A [A|L] L.
+memb_and_rest A [B|L] [B|K] :- memb_and_rest A L K.
+
+pred memb o:A, o:list A.
+
+memb A [A|_].
+memb A [_|As] :- memb A As.
+
+%% ----------------------------------------------------------------------------
+%% FOL formulas.
+%% ----------------------------------------------------------------------------
+
+kind form type.
+kind i    type.
+
+type and, or, imp       form -> form -> form.
+type forall, exists     (i -> form) -> form.
+type bottom             form.
+
+infixl or  4.
+infixl and 5.
+infixr imp 6.
+
+%% ----------------------------------------------------------------------------
+%% Sequents.
+%% ----------------------------------------------------------------------------
+
+kind  seq   type.
+type  -->   list form -> list form -> seq.
+infix -->   3.
+
+%% ----------------------------------------------------------------------------
+%% Proofs.
+%% ----------------------------------------------------------------------------
+
+kind  proof     type.
+
+type  ex-falso  proof.
+type  initial   form -> proof.
+
+type  and_l     form -> proof -> proof.
+type  and_r     form -> proof -> proof -> proof.
+
+type  or_l      form -> proof -> proof -> proof.
+type  or_r      form -> proof -> proof.
+
+type  imp_l     form -> proof -> proof -> proof.
+type  imp_r     form -> proof -> proof.
+
+type  forall_r  form -> (i -> proof) -> proof.
+type  exists_l  form -> (i -> proof) -> proof.
+
+type  forall_l  form -> proof -> proof.
+type  exists_r  form -> proof -> proof.
+
+%% ----------------------------------------------------------------------------
+%% Proof search algorithm.
+%% ----------------------------------------------------------------------------
+
+pred trivial o:proof, i:Seq.
+
+trivial P (Gamma --> Delta) :-
+    memb A Gamma,
+    (
+        A = bottom, !, P = ex-falso
+    ;
+        memb A Delta, !, P = initial A
+    ).
+
+pred invertible_r i:int, o:proof, i:list form, i:form, i:list form.
+
+invertible_r N (forall_r A Q) Gamma ((forall B) as A) Delta :- !,
+    pi x\ invertible N (Q x) (Gamma --> [B x|Delta]).
+
+invertible_r N (imp_r A Q) Gamma ((B imp C) as A) Delta :- !,
+    invertible N Q ([B|Gamma] --> [C,bottom|Delta]).
+
+invertible_r N (or_r A Q) Gamma ((B or C) as A) Delta :-
+    invertible N Q ([B|Gamma] --> [B,C|Delta]).
+
+pred invertible_l i:int, o:proof, i:form, i:list form, i:list form.
+
+invertible_l N (and_l A Q) ((B and C) as A) Gamma Delta :- !,
+    invertible N Q ([B,C|Gamma] --> Delta).
+
+invertible_l N (exists_l A Q) ((exists B) as A) Gamma Delta :- !,
+    pi x\ invertible N (Q x) ([B x|Gamma] --> Delta).
+
+pred invertible i:int, o:proof, i:seq.
+
+invertible _N P Seq :-
+    trivial P Seq, !.
+
+invertible N P (Gamma --> Delta) :-
+    memb_and_rest A Delta Delta1,
+    invertible_r N P Gamma A Delta1, !.
+
+invertible N P (Gamma --> Delta) :-
+    memb_and_rest A Gamma Gamma1,
+    invertible_l N P A Gamma1 Delta, !.
+
+invertible N P Seq :-
+    search N P Seq.
+
+pred search i:int, o:proof, i:seq.
+
+search N _P _Seq :-
+    N < 0, !,
+    fail.
+
+search N (or_l (A or B) P Q) (Gamma --> Delta) :-
+    memb_and_rest (A or B) Gamma Gamma1, !,
+    M is N - 1,
+    invertible M P ([A|Gamma1] --> Delta),
+    invertible M Q ([B|Gamma1] --> Delta).
+
+search N (imp_l (A imp B) P1 P2) (Gamma --> Delta) :-
+    memb_and_rest (A imp B) Gamma Gamma1,
+    M is N - 1,
+    invertible M P1 (Gamma1 --> [A|Delta]), !,
+    invertible N P2 ([B|Gamma1] --> Delta).
+
+search N (forall_l A P) (Gamma --> Delta) :-
+    memb_and_rest ((forall B) as A) Gamma Gamma1, !,
+    M is N - 2,
+    pi x\ invertible M P ([B x|{std.append Gamma1 [A]}] --> Delta).
+
+search N (exists_r A P) (Gamma --> Delta) :-
+    memb_and_rest ((exists B) as A) Delta Delta1, !,
+    M is N - 2,
+    invertible M P (Gamma --> [B _X|{std.append Delta1 [A]}]).
+
+%% Iterative deepening.
+
+pred deepen i:int, o:proof, i:seq.
+deepen N _P _Seq :- N > 30, !,
+                   print "Maximum search deepth excedeed.",
+                   fail.
+
+deepen N P Seq  :- print "(Re)Start search at depth" N,
+                   invertible N P Seq.
+
+deepen N P Seq  :- M is N + 1,
+                   deepen M P Seq.
+
+pred classical o:proof, i:Seq.
+
+classical P Seq :- deepen 0 P Seq.
+
+pred test1 i:form.
+
+test1 A :-
+    print, print "============================================",
+    print "Start proof search of" A,
+    if (classical P ([] --> [A]))
+       (print "Proof found:" P)
+       (print "Proof search failed.").
+
+%% ----------------------------------------------------------------------------
+%% Some tests.
+%% ----------------------------------------------------------------------------
+
+%% Term constructors.
+type f  i -> i -> i.
+type c  i.
+
+%% Form constructors.
+type p  i -> form.
+type a  form.
+type d  i -> form.
+
+type parent   i -> i -> form.
+type ancestor i -> i -> form.
+
+macro @iff A B :- ( (A imp B) and (B imp A) ).
+macro @neg A   :- ( A imp bottom ).
+macro @truth   :- ( @neg bottom ).
+
+main :-
+    Tests =
+      [ ( a imp a )
+      , ( bottom imp a )
+      , ( ((a imp bottom) imp a) imp a )
+      , ( a or (a imp bottom) )
+      , ( forall x\ d x imp exists y\ d y )
+      , ( exists x\ d x imp forall y\ d y )
+      , ( (forall x\ d x) imp (exists y\ d y) )
+      , ( (exists x\ d x) imp (exists y\ d y and p y) )
+      , ( @neg (forall x\ d x) imp (exists y\ @neg (d y)) )
+      , ( @neg (exists x\ d x) imp (forall y\ @neg (d y)) )
+      , ( (exists y\ @neg (d y)) imp @neg (forall x\ d x) )
+      , ( (forall y\ @neg (d y)) imp @neg (exists x\ d x) )
+      , (
+          ((forall x\ p x imp d x) and p c) imp d c 
+        )
+      , (
+          ( (forall x\ ancestor x x) and
+            (forall x\ forall y\ forall z\
+              parent x y and ancestor y z imp ancestor x z) )
+          imp
+          (forall a\ forall b\ forall c\
+            (parent a b and parent b c) imp ancestor a c)
+        )
+      , (
+          ( (forall x\ ancestor x x) and
+            (forall x\ forall y\ forall z\
+              parent x y and ancestor y z imp ancestor x z) )
+          imp
+          (forall a\ forall b\ forall c\ forall d\ forall e\
+            (parent a d and
+             parent a b and
+             parent d e and
+             parent b c
+            ) imp ancestor a c)
+        )
+      %% Examples from Harrison's, tutorial.
+      , (
+          (
+            (@neg Input_a imp (@iff Internal (@neg bottom))) and
+            (@neg Input_b imp (@iff Output Internal)) and
+            (Input_a imp (@iff Output bottom)) and
+            (Input_b imp (@iff Output bottom))
+          ) imp (
+            @iff Output (@neg (Input_a or Input_b))
+          )
+        )
+      , (
+          (
+            (@iff (I1 and I2) A) and
+            (@iff (I1 and I3) B) and
+            (@iff (I2 and I3) C) and
+            (@iff (I1 and  C) D) and
+            (@iff (M  and  R) E) and
+            (@iff (M  and  W) F) and
+            (@iff (N  and  W) G) and
+            (@iff (P  and  W) H) and
+            (@iff (Q  and  W) I) and
+            (@iff (S  and  X) J) and
+            (@iff (T  and  X) K) and
+            (@iff (V  and  X) L) and
+            (@iff (I1 or  I2) M) and
+            (@iff (I1 or  I3) N) and
+            (@iff (I1 or   Q) P) and
+            (@iff (I2 or  I3) Q) and
+            (@iff (I3 or   A) R) and
+            (@iff (a  or   W) S) and
+            (@iff (B  or   W) T) and
+            (@iff (D  or   H) U) and
+            (@iff (C  or   W) V) and
+            (@iff (@neg E) W) and
+            (@iff (@neg U) X) and
+            (@iff (I or L) O1) and
+            (@iff (G or K) O2) and
+            (@iff (F or J) O3)
+          ) imp (
+            (@iff O1 (@neg I1)) and
+            (@iff O2 (@neg I2)) and
+            (@iff O3 (@neg I3))
+          )
+        )
+      ],
+    std.forall Tests test1.

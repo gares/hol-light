@@ -118,7 +118,7 @@ error L :- std.forall L (x\ print "Error:" x), fail.
 
 
 pred trans-coercion o:pretype, o:pretype, o:preterm, o:preterm.
-trans-coercion X X1 T T :- eqq X X1, !.
+trans-coercion X X1 T T :- X == X1, !.
 trans-coercion X X T T.
 trans-coercion A B T R1 :-
   coercions Coercions,
@@ -127,17 +127,6 @@ trans-coercion A B T R1 :-
   %print "attempt" S ":" TS,
   refresh-cpretype TS (ptycon "fun" [A, A1]),
   trans-coercion A1 B (combp (constp S (ptycon "fun" [A, A1])) T) R1.
-
-% == of prolog
-pred eqq i:pretype, i:pretype.
-eqq (ptycon S L1) (ptycon S L2) :- eqq-list L1 L2.
-eqq (uty N) (uty N).
-eqq (sty N) (sty N).
-eqq (uvar A) (uvar B) :- same_var A B.
-
-pred eqq-list i:list pretype, i:list pretype.
-eqq-list [] [].
-eqq-list [X|XS] [Y|YS] :- eqq X Y, eqq-list XS YS.
 
 % no bang, this tries all members
 pred mem i:list A, o:A.

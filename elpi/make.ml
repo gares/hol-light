@@ -110,14 +110,14 @@ end = struct
         with Not_found ->
           let j = incr_get stv in
           UV2STV.add k j m, Utv j)
-(*
+
     let record_Utv_uvar k state =
       try state, RawData.mkUnifVar (UV2STV.elpi k (State.get UV2STV.uvmap state)) ~args:[] state, []
       with Not_found ->
         let state, flex = FlexibleData.Elpi.make ~lvl:0 state in
         let state = State.update UV2STV.uvmap state (UV2STV.add flex k) in
         state, RawData.mkUnifVar (UV2STV.elpi k (State.get UV2STV.uvmap state)) ~args:[] state, []
-*)
+
     let t = AlgebraicData.declare {
       ty = TyName "pretype";
       doc = "The algebraic data type of pretypes";
@@ -127,7 +127,7 @@ end = struct
            B (fun s -> Utv s),
            MS (fun ~ok ~ko -> function
              | (Utv s) -> fun state ->
-                 if s.[0] = '?' && s.[1] != '?' then state, RawData.mkDiscard, []
+                 if s.[0] = '?' && s.[1] != '?' then record_Utv_uvar s state
                  else ok s state
              | _ -> ko));
         K("ptycon","Type constructor",A(BuiltInData.string,C(BuiltInData.list, N)),

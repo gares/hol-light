@@ -70,40 +70,45 @@ trivial P (Gamma --> Delta) :-
     (
         A = bottom, !, P = ex-falso
     ;
-        memb A Delta, !, P = initial A
+        memb A Delta, P = initial A
     ).
 
 pred invertible_r i:int, o:proof, i:list form, i:form, i:list form.
 
-invertible_r N (forall_r A Q) Gamma ((forall B) as A) Delta :- !,
+invertible_r N (forall_r A Q) Gamma A Delta :-
+    A = (forall B), !,
     pi x\ invertible N (Q x) (Gamma --> [B x|Delta]).
 
-invertible_r N (imp_r A Q) Gamma ((B imp C) as A) Delta :- !,
+invertible_r N (imp_r A Q) Gamma A Delta :-
+    A = (B imp C), !,
     invertible N Q ([B|Gamma] --> [C,bottom|Delta]).
 
-invertible_r N (or_r A Q) Gamma ((B or C) as A) Delta :-
-    invertible N Q ([B|Gamma] --> [B,C|Delta]).
+invertible_r N (or_r A Q) Gamma A Delta :-
+    A = (B or C), !,
+    invertible N Q (Gamma --> [B,C|Delta]).
 
 pred invertible_l i:int, o:proof, i:form, i:list form, i:list form.
 
-invertible_l N (and_l A Q) ((B and C) as A) Gamma Delta :- !,
+invertible_l N (and_l A Q) A Gamma Delta :-
+    A = (B and C), !,
     invertible N Q ([B,C|Gamma] --> Delta).
 
-invertible_l N (exists_l A Q) ((exists B) as A) Gamma Delta :- !,
-    pi x\ invertible N (Q x) ([B x|Gamma] --> Delta).
+invertible_l N (exists_l A P) A Gamma Delta :-
+    A = (exists B), !,
+    pi x\ invertible N (P x) ([B x|Gamma] --> Delta).
 
 pred invertible i:int, o:proof, i:seq.
 
 invertible _N P Seq :-
-    trivial P Seq, !.
+    trivial P Seq.
 
 invertible N P (Gamma --> Delta) :-
     memb_and_rest A Delta Delta1,
-    invertible_r N P Gamma A Delta1, !.
+    invertible_r N P Gamma A Delta1.
 
 invertible N P (Gamma --> Delta) :-
     memb_and_rest A Gamma Gamma1,
-    invertible_l N P A Gamma1 Delta, !.
+    invertible_l N P A Gamma1 Delta.
 
 invertible N P Seq :-
     search N P Seq.
@@ -114,32 +119,40 @@ search N _P _Seq :-
     N < 0, !,
     fail.
 
-search N (or_l (A or B) P Q) (Gamma --> Delta) :-
-    memb_and_rest (A or B) Gamma Gamma1, !,
+search N (and_r A P Q) (Gamma --> Delta) :-
+    memb_and_rest A Delta Delta1, A = (B and C),
     M is N - 1,
-    invertible M P ([A|Gamma1] --> Delta),
-    invertible M Q ([B|Gamma1] --> Delta).
+    invertible M P (Gamma --> [B|Delta1]),
+    invertible M Q (Gamma --> [C|Delta1]).
 
-search N (imp_l (A imp B) P1 P2) (Gamma --> Delta) :-
-    memb_and_rest (A imp B) Gamma Gamma1,
+search N (or_l A P Q) (Gamma --> Delta) :-
+    memb_and_rest A Gamma Gamma1, A = (B or C),
     M is N - 1,
-    invertible M P1 (Gamma1 --> [A|Delta]), !,
-    invertible N P2 ([B|Gamma1] --> Delta).
+    invertible M P ([B|Gamma1] --> Delta),
+    invertible M Q ([C|Gamma1] --> Delta).
+
+search N (imp_l A P Q) (Gamma --> Delta) :-
+    memb_and_rest A Gamma Gamma1, A = (B imp C),
+    M is N - 1,
+    invertible M P (Gamma1 --> [B|Delta]),
+    invertible N Q ([C|Gamma1] --> Delta).
 
 search N (forall_l A P) (Gamma --> Delta) :-
-    memb_and_rest ((forall B) as A) Gamma Gamma1, !,
+    memb_and_rest A Gamma Gamma1, A = (forall B),
     M is N - 2,
-    pi x\ invertible M P ([B x|{std.append Gamma1 [A]}] --> Delta).
+    std.append Gamma1 [A] Gamma2,
+    sigma X\ invertible M P ([B X|Gamma2] --> Delta).
 
 search N (exists_r A P) (Gamma --> Delta) :-
-    memb_and_rest ((exists B) as A) Delta Delta1, !,
-    M is N - 2,
-    invertible M P (Gamma --> [B _X|{std.append Delta1 [A]}]).
+    memb_and_rest A Delta Delta1, A = (exists B),
+    M is N - 1,
+    std.append Delta1 [A] Delta2,
+    sigma X\ invertible M P (Gamma --> [B X|Delta2]).
 
 %% Iterative deepening.
 
 pred deepen i:int, o:proof, i:seq.
-deepen N _P _Seq :- N > 30, !,
+deepen N _P _Seq :- N > 20, !,
                    print "Maximum search deepth excedeed.",
                    fail.
 
@@ -184,21 +197,20 @@ macro @truth   :- ( @neg bottom ).
 
 main :-
     Tests =
-      [ ( a imp a )
+      [
+        ( a imp a )
       , ( bottom imp a )
       , ( ((a imp bottom) imp a) imp a )
       , ( a or (a imp bottom) )
       , ( forall x\ d x imp exists y\ d y )
       , ( exists x\ d x imp forall y\ d y )
-      , ( (forall x\ d x) imp (exists y\ d y) )
-      , ( (exists x\ d x) imp (exists y\ d y and p y) )
+      , ( (forall x\ (d x)) imp @neg (exists y\ @neg (d y)) )
+      , ( (exists x\ d x) imp (exists y\ d y or p y) )
       , ( @neg (forall x\ d x) imp (exists y\ @neg (d y)) )
       , ( @neg (exists x\ d x) imp (forall y\ @neg (d y)) )
       , ( (exists y\ @neg (d y)) imp @neg (forall x\ d x) )
       , ( (forall y\ @neg (d y)) imp @neg (exists x\ d x) )
-      , (
-          ((forall x\ p x imp d x) and p c) imp d c 
-        )
+      , ( ((forall x\ p x imp d x) and p c) imp d c )
       , (
           ( (forall x\ ancestor x x) and
             (forall x\ forall y\ forall z\
@@ -220,6 +232,8 @@ main :-
             ) imp ancestor a c)
         )
       %% Examples from Harrison's, tutorial.
+      %% Diverges?
+      /*
       , (
           (
             (@neg Input_a imp (@iff Internal (@neg bottom))) and
@@ -264,5 +278,12 @@ main :-
             (@iff O3 (@neg I3))
           )
         )
+      */
       ],
     std.forall Tests test1.
+
+/*
+main :-
+    std.spy(deepen 4 P ([((forall xx\ p xx imp d xx) and p c)] --> [d c] )),
+    print P.
+*/

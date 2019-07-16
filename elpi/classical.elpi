@@ -81,7 +81,7 @@ invertible_r N (forall_r A Q) Gamma A Delta :-
 
 invertible_r N (imp_r A Q) Gamma A Delta :-
     A = (B imp C), !,
-    invertible N Q ([B|Gamma] --> [C,bottom|Delta]).
+    invertible N Q ([B|Gamma] --> [C|Delta]).
 
 invertible_r N (or_r A Q) Gamma A Delta :-
     A = (B or C), !,

@@ -120,31 +120,31 @@ search N _P _Seq :-
     fail.
 
 search N (and_r A P Q) (Gamma --> Delta) :-
-    memb_and_rest A Delta Delta1, A = (B and C),
+    memb_and_rest A Delta Delta1, A = (B and C), !,
     M is N - 1,
     invertible M P (Gamma --> [B|Delta1]),
     invertible M Q (Gamma --> [C|Delta1]).
 
 search N (or_l A P Q) (Gamma --> Delta) :-
-    memb_and_rest A Gamma Gamma1, A = (B or C),
+    memb_and_rest A Gamma Gamma1, A = (B or C), !,
     M is N - 1,
     invertible M P ([B|Gamma1] --> Delta),
     invertible M Q ([C|Gamma1] --> Delta).
 
 search N (imp_l A P Q) (Gamma --> Delta) :-
-    memb_and_rest A Gamma Gamma1, A = (B imp C),
+    memb_and_rest A Gamma Gamma1, A = (B imp C), !,
     M is N - 1,
     invertible M P (Gamma1 --> [B|Delta]),
     invertible N Q ([C|Gamma1] --> Delta).
 
 search N (forall_l A P) (Gamma --> Delta) :-
-    memb_and_rest A Gamma Gamma1, A = (forall B),
+    memb_and_rest A Gamma Gamma1, A = (forall B), !,
     M is N - 2,
     std.append Gamma1 [A] Gamma2,
     sigma X\ invertible M P ([B X|Gamma2] --> Delta).
 
 search N (exists_r A P) (Gamma --> Delta) :-
-    memb_and_rest A Delta Delta1, A = (exists B),
+    memb_and_rest A Delta Delta1, A = (exists B), !,
     M is N - 1,
     std.append Delta1 [A] Delta2,
     sigma X\ invertible M P (Gamma --> [B X|Delta2]).

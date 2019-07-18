@@ -104,11 +104,11 @@ invertible _N P Seq :-
 
 invertible N P (Gamma --> Delta) :-
     memb_and_rest A Delta Delta1,
-    invertible_r N P Gamma A Delta1.
+    invertible_r N P Gamma A Delta1, !.
 
 invertible N P (Gamma --> Delta) :-
-    memb_and_rest A Gamma Gamma1,
-    invertible_l N P A Gamma1 Delta.
+    memb_and_rest A Gamma Gamma1, 
+    invertible_l N P A Gamma1 Delta, !.
 
 invertible N P Seq :-
     search N P Seq.
@@ -134,12 +134,12 @@ search N (or_l A P Q) (Gamma --> Delta) :-
 search N (imp_l A P Q) (Gamma --> Delta) :-
     memb_and_rest A Gamma Gamma1, A = (B imp C), !,
     M is N - 1,
-    invertible M P (Gamma1 --> [B|Delta]),
-    invertible N Q ([C|Gamma1] --> Delta).
+    invertible M P (Gamma1 --> [B|Delta]), !,
+    invertible M Q ([C|Gamma1] --> Delta).
 
 search N (forall_l A P) (Gamma --> Delta) :-
     memb_and_rest A Gamma Gamma1, A = (forall B), !,
-    M is N - 2,
+    M is N - 1,
     std.append Gamma1 [A] Gamma2,
     sigma X\ invertible M P ([B X|Gamma2] --> Delta).
 
@@ -233,7 +233,6 @@ main :-
         )
       %% Examples from Harrison's, tutorial.
       %% Diverges?
-      /*
       , (
           (
             (@neg Input_a imp (@iff Internal (@neg bottom))) and
@@ -278,12 +277,5 @@ main :-
             (@iff O3 (@neg I3))
           )
         )
-      */
       ],
     std.forall Tests test1.
-
-/*
-main :-
-    std.spy(deepen 4 P ([((forall xx\ p xx imp d xx) and p c)] --> [d c] )),
-    print P.
-*/

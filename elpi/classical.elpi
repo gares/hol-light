@@ -180,13 +180,14 @@ test1 A :-
 %% ----------------------------------------------------------------------------
 
 %% Term constructors.
-type f  i -> i -> i.
-type c  i.
+type f, g     i -> i.
+type c        i.
 
 %% Form constructors.
-type p  i -> form.
-type a  form.
-type d  i -> form.
+type a        form.
+type p, q, d  i -> form.
+
+type p1, q1, r i -> i -> form.
 
 type parent   i -> i -> form.
 type ancestor i -> i -> form.
@@ -231,8 +232,7 @@ main :-
              parent b c
             ) imp ancestor a c)
         )
-      %% Examples from Harrison's, tutorial.
-      %% Diverges?
+      %% Examples from Harrison's tutorial.
       , (
           (
             (@neg Input_a imp (@iff Internal (@neg bottom))) and
@@ -277,5 +277,36 @@ main :-
             (@iff O3 (@neg I3))
           )
         )
+      , (
+          ( 
+            (forall x\ forall y\ forall z\ p1 x y and p1 y z imp p1 x z) and
+            (forall x\ forall y\ forall z\ q1 x y and q1 y z imp q1 x z) and
+            (forall x\ forall y\ p1 x y imp p1 y x) and
+            (forall x\ forall y\ p1 x y or q1 x y)
+          ) imp (
+            (forall x\ forall y\ p1 x y) or (forall x\ forall y\ q1 x y)
+          )
+        )
+      % These last twos do not work :-(
+      /*
+      , (
+          (
+            (forall x\ r x x) and
+            (forall x\ forall y\ forall z\ (r x y and r y z) imp r x z) and
+            (forall x\ forall y\ @iff (r (f x) y) (r x (g y)))
+          ) imp (
+            (forall x\ forall y\ r x y imp r (f x) (f y)) and
+            (forall x\ forall y\ r x y imp r (g x) (g y))
+          )
+        )
+      ,
+        (
+          @iff
+            (@iff (exists x\ forall y\ @iff (p x) (p y))
+                  (@iff (exists x\ q x) (forall y\ q y)))
+            (@iff (exists x\ forall y\ @iff (q x) (q y))
+                  (@iff (exists x\ (p x)) (forall y\ p y)))
+        )
+      */
       ],
     std.forall Tests test1.

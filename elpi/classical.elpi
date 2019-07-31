@@ -27,6 +27,9 @@ infixl or  4.
 infixl and 5.
 infixr imp 6.
 
+already_in_gamma L T :- std.exists L (same_term T).
+already_in_delta L T :- std.exists L (same_term T).
+
 %% ----------------------------------------------------------------------------
 %% Sequents.
 %% ----------------------------------------------------------------------------
@@ -63,117 +66,161 @@ type  exists_r  form -> proof -> proof.
 %% Proof search algorithm.
 %% ----------------------------------------------------------------------------
 
-pred trivial o:proof, i:Seq.
+macro @cut-if P :- sigma Cut\ (if P (Cut = !) (Cut = true)), Cut.
+% macro @cut-if P :- !.
 
-trivial P (Gamma --> Delta) :-
-    memb A Gamma,
-    (
-        A = bottom, !, P = ex-falso
-    ;
-        memb A Delta, P = initial A
-    ).
+kind solution type.
+type unique solution.
+type choice solution.
 
-pred invertible_r i:int, o:proof, i:list form, i:form, i:list form.
+pred trivial o:proof, i:Seq, o:solution.
+trivial P (Gamma --> Delta) S :-
+  if (memb bottom Gamma)
+     (P = ex-falso, S = unique)
+     (trivial.aux P Gamma Delta Delta S).
 
-invertible_r N (forall_r A Q) Gamma A Delta :-
-    A = (forall B), !,
-    pi x\ invertible N (Q x) (Gamma --> [B x|Delta]).
+:index(_ 1)
+pred trivial.aux o:proof, i:list form, i:list form, i:list form, o:solution.
 
-invertible_r N (imp_r A Q) Gamma A Delta :-
-    A = (B imp C), !,
-    invertible N Q ([B|Gamma] --> [C|Delta]).
+trivial.aux P [Hyp|Hyps] [G|Gs] OrigGoals S :-
+  if (same_term Hyp G)
+     (P = initial G, S = unique)
+  (if (Hyp = G)
+      (P = initial G, S = choice)
+      (trivial.aux P [Hyp|Hyps] Gs OrigGoals S)).
 
-invertible_r N (or_r A Q) Gamma A Delta :-
-    A = (B or C), !,
-    invertible N Q (Gamma --> [B,C|Delta]).
+trivial.aux P [_|Hyps] [] OrigGoals S :- !,
+  trivial.aux P Hyps OrigGoals OrigGoals S.
 
-pred invertible_l i:int, o:proof, i:form, i:list form, i:list form.
+pred invertible i:int, o:proof, i:seq, o:solution.
+:if "DBG:SEARCH"
+invertible N _ Seq _ :- print "invertible" N Seq, fail.
 
-invertible_l N (and_l A Q) A Gamma Delta :-
-    A = (B and C), !,
-    invertible N Q ([B,C|Gamma] --> Delta).
+invertible N P (Gamma --> Delta) S :-
+  invertible_l Gamma [] Delta [] N P S.
 
-invertible_l N (exists_l A P) A Gamma Delta :-
-    A = (exists B), !,
-    pi x\ invertible N (P x) ([B x|Gamma] --> Delta).
+:index(2)
+pred invertible_l i:list form, i:list form, i:list form, i:list form, i:int, o:proof, o:solution.
+invertible_l [] Gamma Delta AccD N P S :- !,
+  invertible_r Delta AccD [] Gamma N P S.
 
-pred invertible i:int, o:proof, i:seq.
+invertible_l [(A and B)|Gamma] Acc Delta AccD N (and_l (A and B) Q) S :- !,
+  invertible_l [A,B|Gamma] Acc Delta AccD N Q S.
 
-invertible _N P Seq :-
-    trivial P Seq.
+invertible_l [exists Ax|Gamma] Acc Delta AccD N (exists_l (exists Ax) Q) S :- !,
+  pi x\ invertible_l [Ax x|Gamma] Acc Delta AccD N (Q x) S.
 
-invertible N P (Gamma --> Delta) :-
-    memb_and_rest A Delta Delta1,
-    invertible_r N P Gamma A Delta1, !.
+invertible_l [forall Ax|Gamma] Acc Delta AccD N (forall_l (forall Ax) Q) S :- !,
+  if (already_in_gamma Acc (forall Ax)) (Acc1 = Acc) (Acc1 = [forall Ax|Acc]),
+  sigma X\ invertible_l [Ax X|Gamma] Acc1 Delta AccD N Q S.
 
-invertible N P (Gamma --> Delta) :-
-    memb_and_rest A Gamma Gamma1, 
-    invertible_l N P A Gamma1 Delta, !.
+invertible_l [X|Gamma] Acc Delta AccD N P S :-
+  invertible_l Gamma [X|Acc] Delta AccD N P S.
 
-invertible N P Seq :-
-    search N P Seq.
+trivial-or-search _ P Seq S :-
+  trivial P Seq S, @cut-if (S = unique).
+trivial-or-search N P ((Gamma --> Delta) as Seq) S :-
+  search N P Seq {std.length Gamma} {std.length Delta} S.
 
-pred search i:int, o:proof, i:seq.
+:index (2)
+pred invertible_r i:list form, i:list form, i:list form, i:list form, i:int, o:proof, o:solution.
+invertible_r [] Delta [] Gamma N P S :- !,
+  Seq = ({std.rev Gamma} --> {std.rev Delta}),
+  trivial-or-search N P Seq S.
 
-search N _P _Seq :-
+invertible_r [] Delta Gamma AccG N P S :- !,
+  invertible_l Gamma AccG [] Delta N P S.
+
+invertible_r [forall Ax|Delta] Acc Gamma AccG N (forall_r (forall Ax) Q) S :- !,
+  pi x\ invertible_r [Ax x|Delta] Acc Gamma AccG N (Q x) S.
+
+invertible_r [(A imp B)|Delta] Acc Gamma AccG N (imp_r (A imp B) Q) S :- !,
+  if (already_in_delta Delta B)       (D1 = Delta) (D1 = [B|Delta]),
+  if (already_in_delta Acc (A imp B)) (Acc1 = Acc) (Acc1 = [(A imp B)|Acc]),
+  if (already_in_gamma Gamma A)       (G1 = Gamma) (G1 = [A|Gamma]),
+  invertible_r D1 Acc1 G1 AccG N Q S.
+
+invertible_r [(A or B)|Delta] Acc Gamma AccG N (or_r (A or B) Q) S :- !,
+  invertible_r [A,B|Delta] Acc Gamma AccG N Q S.
+
+invertible_r [(exists Ax)|Delta] Acc Gamma AccG N (exists_r (exists Ax) Q) S :- !,
+  sigma X\ invertible_r [Ax X|Delta] [exists Ax|Acc] Gamma AccG N Q S.
+
+invertible_r [X|Delta] Acc Gamma AccG N P S :- !,
+  invertible_r Delta [X|Acc] Gamma AccG N P S.
+
+
+and-solution unique unique unique :- !.
+and-solution _ _ choice.
+
+pred search i:int, o:proof, i:seq, i:int, i:int, o:solution.
+
+:if "DBG:SEARCH"
+search Depth _ Seq _ _ _ :-
+  print "search" Depth Seq,
+  fail.
+
+search N _P _Seq _ _ _ :-
     N < 0, !,
     fail.
 
-search N (and_r A P Q) (Gamma --> Delta) :-
-    memb_and_rest A Delta Delta1, A = (B and C), !,
+search N (and_r (B and C) P Q) (Gamma --> [(B and C)|Delta]) _ _ S :-
+    not(already_in_delta Delta B),
+    not(already_in_delta Delta C),
     M is N - 1,
-    invertible M P (Gamma --> [B|Delta1]),
-    invertible M Q (Gamma --> [C|Delta1]).
+    (invertible M P (Gamma --> [B|Delta]) S1),
+    @cut-if (S1 = unique),
+    (invertible M Q (Gamma --> [C|Delta]) S2),
+    and-solution S1 S2 S.
 
-search N (or_l A P Q) (Gamma --> Delta) :-
-    memb_and_rest A Gamma Gamma1, A = (B or C), !,
-    M is N - 1,
-    invertible M P ([B|Gamma1] --> Delta),
-    invertible M Q ([C|Gamma1] --> Delta).
+search N P (Gamma --> [F|Delta]) V  U S :- U > 0, !,
+    std.append Delta [F] Delta1,
+    search N P (Gamma --> Delta1) V {calc (U - 1)} S.
 
-search N (imp_l A P Q) (Gamma --> Delta) :-
-    memb_and_rest A Gamma Gamma1, A = (B imp C), !,
-    M is N - 1,
-    invertible M P (Gamma1 --> [B|Delta]), !,
-    invertible M Q ([C|Gamma1] --> Delta).
 
-search N (forall_l A P) (Gamma --> Delta) :-
-    memb_and_rest A Gamma Gamma1, A = (forall B), !,
-    M is N - 1,
-    std.append Gamma1 [A] Gamma2,
-    sigma X\ invertible M P ([B X|Gamma2] --> Delta).
+search N (or_l (B or C) P Q) ([(B or C)|Gamma] --> Delta) _ _ S :-
+    not (already_in_gamma Gamma B ; already_in_gamma Gamma C),
+    M is N - 1, 
+    invertible M P ([B|Gamma] --> Delta) S1,
+    @cut-if (S1 = unique),
+    invertible M Q ([C|Gamma] --> Delta) S2,
+    and-solution S1 S2 S.
 
-search N (exists_r A P) (Gamma --> Delta) :-
-    memb_and_rest A Delta Delta1, A = (exists B), !,
+search N (imp_l (B imp C) P Q) ([(B imp C)|Gamma] --> Delta) _ _ S :-
+    not (already_in_gamma Gamma C),
     M is N - 1,
-    std.append Delta1 [A] Delta2,
-    sigma X\ invertible M P (Gamma --> [B X|Delta2]).
+    (invertible M Q ([C,(B imp C)|Gamma] --> Delta)) S1,
+    @cut-if (S1 = unique),
+    (invertible M P ([(B imp C)|Gamma] --> [B])) S2,
+    and-solution S1 S2 S.
+
+search N P ([F|Gamma] --> Delta) V 0 S :- V > 0, !,
+    std.append Gamma [F] Gamma1,
+    search N P (Gamma1 --> Delta) {calc (V - 1)} 0 S.
+
+search N P Seq 0 0 S :- !,
+  M is N - 1,
+  invertible M P Seq S.
+
 
 %% Iterative deepening.
 
-pred deepen i:int, o:proof, i:seq.
-deepen N _P _Seq :- N > 20, !,
-                   print "Maximum search deepth excedeed.",
+pred max-depth o:int.
+
+pred deepen i:int, o:proof, i:seq, i:float.
+deepen N _P _Seq T0 :- max-depth Max, N > Max, !,
+                   print "Maximum search deepth excedeed after" {calc ({gettimeofday} - T0)},
                    fail.
 
-deepen N P Seq  :- print "(Re)Start search at depth" N,
-                   invertible N P Seq.
+deepen N P Seq T0 :- print "(Re)Start search at depth" N "after" {calc ({gettimeofday} - T0)},
+                   invertible N P Seq S_.
 
-deepen N P Seq  :- M is N + 1,
-                   deepen M P Seq.
+deepen N P Seq T0 :- M is N + 1,
+                   deepen M P Seq T0.
 
 pred classical o:proof, i:Seq.
 
-classical P Seq :- deepen 0 P Seq.
-
-pred test1 i:form.
-
-test1 A :-
-    print, print "============================================",
-    print "Start proof search of" A,
-    if (classical P ([] --> [A]))
-       (print "Proof found:" P)
-       (print "Proof search failed.").
+classical P Seq :- deepen 0 P Seq {gettimeofday}.
 
 %% ----------------------------------------------------------------------------
 %% Some tests.

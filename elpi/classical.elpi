@@ -168,9 +168,9 @@ search N (and_r (B and C) P Q) (Gamma --> [(B and C)|Delta]) _ _ S :-
     not(already_in_delta Delta B),
     not(already_in_delta Delta C),
     M is N - 1,
-    (invertible M P (Gamma --> [B|Delta]) S1),
+    invertible M P (Gamma --> [B|Delta]) S1,
     @cut-if (S1 = unique),
-    (invertible M Q (Gamma --> [C|Delta]) S2),
+    invertible M Q (Gamma --> [C|Delta]) S2,
     and-solution S1 S2 S.
 
 search N P (Gamma --> [F|Delta]) V  U S :- U > 0, !,
@@ -189,9 +189,12 @@ search N (or_l (B or C) P Q) ([(B or C)|Gamma] --> Delta) _ _ S :-
 search N (imp_l (B imp C) P Q) ([(B imp C)|Gamma] --> Delta) _ _ S :-
     not (already_in_gamma Gamma C),
     M is N - 1,
-    (invertible M Q ([C,(B imp C)|Gamma] --> Delta)) S1,
+    Gamma1 = [(B imp C)|Gamma],
+    invertible M Q ([C|Gamma1] --> Delta) S1,
     @cut-if (S1 = unique),
-    (invertible M P ([(B imp C)|Gamma] --> [B])) S2,
+    if (already_in_delta Delta B) (Delta1 = Delta) (Delta1 = [B|Delta]),
+    if (already_in_gamma Gamma (B imp C)) (Gamma2 = Gamma) (Gamma2 = [(B imp C)|Gamma]),
+    invertible M P (Gamma2 --> Delta1) S2,
     and-solution S1 S2 S.
 
 search N P ([F|Gamma] --> Delta) V 0 S :- V > 0, !,

@@ -243,23 +243,65 @@ macro @iff A B :- ( (A imp B) and (B imp A) ).
 macro @neg A   :- ( A imp bottom ).
 macro @truth   :- ( @neg bottom ).
 
+kind test type.
+type ok int -> form -> test.
+type ko int -> form -> test.
+
+
+type main prop.
 main :-
-    Tests =
+    tests Tests,
+    runall Tests test1 0 0 Succ [] Failures,
+    print "Passed" Succ "out of" {std.length Tests},
+    if (not(Failures = [])) (print "Failures:" Failures) true.
+
+type main list string -> prop.
+main [Is] :- !,
+  string_to_term Is I,
+  tests Tests,
+  std.nth I Tests T,
+  test1 T I 0 N [] _, !, N = 1.
+main [] :- !, main.
+main _ :- halt "usage: main [testno]".
+
+pred test1 i:test, i:int, i:int, o:int, i:list int, o:list int.
+test1 (ok Max A) Num N M L L1 :-
+    print, print "============================================",
+    print Num ": Start proof search of" A "with bound" Max,
+    if (max-depth Max => classical P ([] --> [A]))
+       (M is N + 1, L = L1, print "Proof found:")
+       (M = N, L1 = [Num|L], print "Proof search failed.").
+test1 (ko Max A) Num N M L L :-
+    print, print "============================================",
+    print Num ": Start proof search of" A "with bound" Max,
+    if (max-depth Max => classical P ([] --> [A]))
+       (halt "unsound on:" Num)
+       (M is N + 1, print "Proof search failed (as expected).").
+
+
+pred runall i:list A, i:(A -> int -> int -> int -> list int -> list int -> prop), i:int, i:int, o:int, i:list int, o:list int.
+runall [] _ _ X X L L.
+runall [X|XS] F I N M L L1 :- F X I N Tmp L Ltmp, J is I + 1, runall XS F J Tmp M Ltmp L1.
+
+
+pred tests o:list test.
+tests
       [
-        ( a imp a )
-      , ( bottom imp a )
-      , ( ((a imp bottom) imp a) imp a )
-      , ( a or (a imp bottom) )
-      , ( forall x\ d x imp exists y\ d y )
-      , ( exists x\ d x imp forall y\ d y )
-      , ( (forall x\ (d x)) imp @neg (exists y\ @neg (d y)) )
-      , ( (exists x\ d x) imp (exists y\ d y or p y) )
-      , ( @neg (forall x\ d x) imp (exists y\ @neg (d y)) )
-      , ( @neg (exists x\ d x) imp (forall y\ @neg (d y)) )
-      , ( (exists y\ @neg (d y)) imp @neg (forall x\ d x) )
-      , ( (forall y\ @neg (d y)) imp @neg (exists x\ d x) )
-      , ( ((forall x\ p x imp d x) and p c) imp d c )
-      , (
+        ko 2 ( (a imp a) imp a)
+      , ok 1 ( a imp a )
+      , ok 1 ( bottom imp a )
+      , ok 1 ( ((a imp bottom) imp a) imp a )
+      , ok 1 ( a or (a imp bottom) )
+      , ok 1 ( forall x\ d x imp exists y\ d y )
+      , ok 1 ( exists x\ d x imp forall y\ d y )
+      , ok 1 ( (forall x\ (d x)) imp @neg (exists y\ @neg (d y)) )
+      , ok 1 ( (exists x\ d x) imp (exists y\ d y or p y) )
+      , ok 1 ( @neg (forall x\ d x) imp (exists y\ @neg (d y)) )
+      , ok 1 ( @neg (exists x\ d x) imp (forall y\ @neg (d y)) )
+      , ok 1 ( (exists y\ @neg (d y)) imp @neg (forall x\ d x) )
+      , ok 1 ( (forall y\ @neg (d y)) imp @neg (exists x\ d x) )
+      , ok 1 ( ((forall x\ p x imp d x) and p c) imp d c )
+      , ok 1 (
           ( (forall x\ ancestor x x) and
             (forall x\ forall y\ forall z\
               parent x y and ancestor y z imp ancestor x z) )
@@ -267,7 +309,7 @@ main :-
           (forall a\ forall b\ forall c\
             (parent a b and parent b c) imp ancestor a c)
         )
-      , (
+      , ok 1 (
           ( (forall x\ ancestor x x) and
             (forall x\ forall y\ forall z\
               parent x y and ancestor y z imp ancestor x z) )
@@ -280,7 +322,7 @@ main :-
             ) imp ancestor a c)
         )
       %% Examples from Harrison's tutorial.
-      , (
+      , ok 1 (
           (
             (@neg Input_a imp (@iff Internal (@neg bottom))) and
             (@neg Input_b imp (@iff Output Internal)) and
@@ -290,7 +332,7 @@ main :-
             @iff Output (@neg (Input_a or Input_b))
           )
         )
-      , (
+      , ok 1 (
           (
             (@iff (I1 and I2) A) and
             (@iff (I1 and I3) B) and
@@ -324,7 +366,7 @@ main :-
             (@iff O3 (@neg I3))
           )
         )
-      , (
+      , ok 1 (
           ( 
             (forall x\ forall y\ forall z\ p1 x y and p1 y z imp p1 x z) and
             (forall x\ forall y\ forall z\ q1 x y and q1 y z imp q1 x z) and
@@ -334,26 +376,23 @@ main :-
             (forall x\ forall y\ p1 x y) or (forall x\ forall y\ q1 x y)
           )
         )
-      % These last twos do not work :-(
-      /*
-      , (
+      , ok 2 (
           (
-            (forall x\ r x x) and
-            (forall x\ forall y\ forall z\ (r x y and r y z) imp r x z) and
-            (forall x\ forall y\ @iff (r (f x) y) (r x (g y)))
+            %(forall x\ r x x) and
+            %(forall x\ forall y\ forall z\ (r x y and r y z) imp r x z) and
+            (forall x\ forall y\ @iff (r (f x) y) (r x (g y))) and
+            (forall x\ forall y\ @iff (r (g x) y) (r x (f y))) and
+            (forall x\ forall y\ r x y imp r x (f (g y)) and r x y imp r x (g (f y)))
           ) imp (
-            (forall x\ forall y\ r x y imp r (f x) (f y)) and
+            (forall x\ forall y\ r x y imp r (f x) (f y))  and
             (forall x\ forall y\ r x y imp r (g x) (g y))
           )
         )
-      ,
-        (
+      , ok 5 (
           @iff
             (@iff (exists x\ forall y\ @iff (p x) (p y))
                   (@iff (exists x\ q x) (forall y\ q y)))
             (@iff (exists x\ forall y\ @iff (q x) (q y))
                   (@iff (exists x\ (p x)) (forall y\ p y)))
         )
-      */
-      ],
-    std.forall Tests test1.
+      ].

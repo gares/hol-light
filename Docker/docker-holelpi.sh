@@ -1,8 +1,8 @@
 #!/bin/sh
 
-# MNTPATH='/Users/maggesi/Devel/HOL/hol-light-elpi'
-MNTPATH="$PWD"
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+MNTPATH=$(dirname "${DIR}")
 
-exec docker run --rm -it -m 6G -h holelpi \
-       -v "$MNTPATH:/home/opam/work" \
+exec docker run --rm -it -h holelpi \
+       -v "${MNTPATH}:/home/opam/work" \
        holelpi

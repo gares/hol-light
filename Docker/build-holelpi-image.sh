@@ -1,3 +1,3 @@
 #!/bin/sh
 
-exec docker build -t holelpi holelpi
+exec docker build --target ocaml-dmtcp-elpi -t holelpi holelpi

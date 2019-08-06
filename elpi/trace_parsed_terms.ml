@@ -4,6 +4,10 @@
 
 let trace_parsed_terms = ref false;;
 
+let parsed_terms :
+      (string * term * (string * (string * hol_type)) list) list ref =
+  ref [];;
+
 let register_parsed_term str tm =
   parsed_terms := (str,tm,!the_interface) :: !parsed_terms;;
 
@@ -17,10 +21,6 @@ let parse_term_notrace s =
   if l = [] then
    (term_of_preterm o (retypecheck [])) ptm
   else failwith "Unparsed input following term";;
-
-let parsed_terms :
-      (string * term * (string * (string * hol_type)) list) list ref =
-  ref [];;
 
 let parse_term_trace (s : string) : term =
   let tm = parse_term s in
@@ -49,11 +49,43 @@ let load_parsed_terms pathfile :
 
 (*
 length !parsed_terms;;
-let tml = sort (<) !parsed_terms;;
-length tml;;
-parsed_terms := tml;;
+parsed_terms := setify !parsed_terms;;
+length !parsed_terms;;
 
-let pathfile = "parsed_terms.bin";;
-save_parsed_terms pathfile tml;;
-assert (load_parsed_terms pathfile = tml);;
+let pathfile = "CORE.bin";;
+save_parsed_terms pathfile !parsed_terms;;
+assert (load_parsed_terms pathfile = !parsed_terms);;
+
+time loadt "Multivariate/make.ml";;
+length !parsed_terms;;
+parsed_terms := setify !parsed_terms;;
+length !parsed_terms;;
+
+let pathfile = "MULTIVARIATE.bin";;
+save_parsed_terms pathfile !parsed_terms;;
+
+loadt "Library/binomial.ml";;
+loadt "Multivariate/complexes.ml";;
+loadt "Multivariate/canal.ml";;
+loadt "Multivariate/transcendentals.ml";;
+loadt "Multivariate/realanalysis.ml";;
+loadt "Multivariate/moretop.ml";;
+loadt "Multivariate/cauchy.ml";;
+loadt "Multivariate/complex_database.ml";;
+Gc.compact();;
+
+length !parsed_terms;;
+parsed_terms := setify !parsed_terms;;
+length !parsed_terms;;
+
+let pathfile = "COMPLEX.bin";;
+save_parsed_terms pathfile !parsed_terms;;
+
+loadt "Quaternions/make.ml";;
+length !parsed_terms;;
+parsed_terms := setify !parsed_terms;;
+length !parsed_terms;;
+
+let pathfile = "HYPERCOMPLEX.bin";;
+save_parsed_terms pathfile !parsed_terms;;
 *)

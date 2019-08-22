@@ -1,6 +1,6 @@
 
 %% ----------------------------------------------------------------------------
-%% ovrloading for algebraic structures
+%% Overloading for algebraic structures.
 %% ----------------------------------------------------------------------------
 
 :before "of:application"

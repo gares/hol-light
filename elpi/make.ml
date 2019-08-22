@@ -44,6 +44,11 @@ module Hol_elpi : sig
   (* The ``quotation`` calling Elpi's elab predicate *)
   val quotation : string -> term
 
+  (* The ``elaborator`` calling Elpi's elab predicate *)
+  val elaborate_preterm : preterm -> preterm
+
+  val elaborate : preterm -> term
+
   (* Rule *)
   val prove : term -> thm
 
@@ -679,7 +684,7 @@ end
   ;;
 
   (* This runs the elpi query requesting the elaboration of a given term *)
-  let elaborate p =
+  let elaborate_preterm p =
     let elab_p, _ = run_predicate ~typecheck:false (hol ())
       (Query.Query {
         predicate = "elab";
@@ -687,8 +692,11 @@ end
                     Q(Hol_preterm.t,"Elab_p",
                     N)) })
     in
-    term_of_preterm elab_p
+    elab_p
   ;;
+
+  let elaborate p =
+    term_of_preterm (elaborate_preterm p);;
 
   let quotation s =
     let p, l = parse_preterm (lex (explode s)) in

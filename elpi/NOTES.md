@@ -17,14 +17,20 @@
    ```
 4. Load the Elpi extension:
    ```
+   trace_parsed_terms := false;;
+   reserve_words ["^"];;
    loadt "elpi/make.ml";;
+   needs "elpi/trace_parsed_terms.ml";;
+   unreserve_words ["^"];;
+   trace_parsed_terms := true;;
+   Gc.compact();;
    ```
 
 ## Manually test one entry
 
 1. Load the trace code:
    ```
-   loadt "elpi/trace_parsed_terms.ml";;
+   needs "elpi/trace_parsed_terms.ml";;
    ```
 2. Load the saved trace:
    ```

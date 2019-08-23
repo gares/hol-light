@@ -131,12 +131,7 @@ trans-coercion X X T T.
 trans-coercion A B T R1 :-
   coercions Coercions,
   %print "looking for a coercion" A "->" B "for" T,
-  mem Coercions (coercion S TS),
+  std.mem Coercions (coercion S TS),
   %print "attempt" S ":" TS,
   refresh-cpretype TS (ptycon "fun" [A, A1]),
   trans-coercion A1 B (combp (constp S (ptycon "fun" [A, A1])) T) R1.
-
-% no bang, this tries all members
-pred mem i:list A, o:A.
-mem [X|_] X.
-mem [_|Xs] X :- mem Xs X.

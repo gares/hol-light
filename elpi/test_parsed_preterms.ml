@@ -26,11 +26,9 @@ length pterms;;
 (* ------------------------------------------------------------------------- *)
 
 (* Returns true only if Noparse is raised. *)
-let term_noparse (s,ptm,tm,ctms,ctys,itf) =
+let term_noparse (s,ptm,tm,st) =
   let p = parse_preterm o lex o explode in
-  try the_interface := itf;
-      the_term_constants := ctms;
-      the_type_constants := ctys;
+  try set_hol_status st;
       ignore(p s);
       false
   with Failure _ -> false
@@ -42,12 +40,10 @@ length ko_terms;;
 
 (* Returns true if the elaborator fails. *)
 (* NB: Skips (i.e. return false) terms that contain the constant GABS. *)
-let term_noelab (_,ptm,tm,ctms,ctys,itf) =
+let term_noelab (_,ptm,tm,st) =
   if contains_gabs tm then false else
   begin
-    the_interface := itf;
-    the_term_constants := ctms;
-    the_type_constants := ctys;
+    set_hol_status st;
     not (can Hol_elpi.elaborate ptm)
   end;;
 
@@ -58,12 +54,10 @@ length ko_terms;;
 (* Returns true if the elaborator returns a different term. *)
 (* NB: Skips (i.e. return false) terms that contain the constant GABS. *)
 (* NB2: (Also return true if the elaborator fails.) *)
-let term_elab_neq (_,ptm,tm,ctms,ctys,itf) =
+let term_elab_neq (_,ptm,tm,st) =
   if contains_gabs tm then false else
   begin
-    the_interface := itf;
-    the_term_constants := ctms;
-    the_type_constants := ctys;
+    set_hol_status st;
     try let qtm = Hol_elpi.elaborate ptm in
         not (term_eq tm qtm)
     with Failure _ -> true
@@ -85,12 +79,8 @@ let ko_terms = filter_progress term_noparse (take 200 pterms);;
 
 do_list (fun (s,_,_,_,_,_) -> report s) ko_terms;;
 
-let (s,ptm,tm,ctms,ctys,itf) = el 0 ko_terms;;
-let () =
-    the_interface := itf;
-    the_term_constants := ctms;
-    the_type_constants := ctys;
-    ();;
+let (s,ptm,tm,st) = el 0 ko_terms;;
+set_hol_status st;;
 (Hol_elpi.elaborate_preterm o fst o parse_preterm o lex o explode) "coprime";;
 
 filter_progress

@@ -24,10 +24,31 @@
 
       the following two lines:
 
-        val the_type_constants : ((string * int) list) ref
-        val the_term_const : ((string * hol_type) list) ref
+        val the_type_constants : (string * int) list ref
+        val the_term_constants : (string * hol_type) list ref
                                                                              *)
 (* ------------------------------------------------------------------------- *)
+
+(* ------------------------------------------------------------------------- *)
+(* Status of the system.                                                     *)
+(* ------------------------------------------------------------------------- *)
+
+type hol_status = {
+  hol_type_constants : (string * int) list;
+  hol_term_constants : (string * hol_type) list;
+  hol_interface      : (string * (string * hol_type)) list
+};;
+
+let get_hol_status () = {
+  hol_term_constants = !the_term_constants;
+  hol_type_constants = !the_type_constants;
+  hol_interface      = !the_interface
+};;
+
+let set_hol_status s =
+  the_type_constants := s.hol_type_constants;
+  the_term_constants := s.hol_term_constants;
+  the_interface      := s.hol_interface;;
 
 (* ------------------------------------------------------------------------- *)
 (* Store parsed terms.                                                       *)
@@ -43,14 +64,12 @@ let trace_parsed_terms = ref false;;
 (* ctys = type constants; *)
 (* ift = interface; *)
 let parsed_terms :
-      (string * preterm * term *
-       (string * hol_type) list * (string * int) list *
-       (string * (string * hol_type)) list) list ref =
+      (string * preterm * term * hol_status) list ref =
   ref [];;
 
 let register_parsed_term str ptm tm =
   parsed_terms :=
-    (str,ptm,tm,constants(),types(),!the_interface) :: !parsed_terms;;
+    (str,ptm,tm,get_hol_status()) :: !parsed_terms;;
 
 (* ------------------------------------------------------------------------- *)
 (* Variant of parse_term for tracing all terms parsed.                       *)
@@ -86,17 +105,13 @@ let parse_term (s:string) : term =
 (* ------------------------------------------------------------------------- *)
 
 let save_parsed_terms pathfile
-      (ptml : (string * preterm * term *
-               (string * hol_type) list * (string * int) list *
-               (string*(string*hol_type))list)list) : unit =
+      (ptml : (string * preterm * term * hol_status) list) : unit =
   let oc = open_out pathfile in
   Marshal.to_channel oc ptml [];
   close_out oc;;
 
 let load_parsed_terms pathfile :
-      (string * preterm * term *
-       (string * hol_type) list * (string * int) list *
-       (string * (string * hol_type)) list) list =
+      (string * preterm * term * hol_status) list =
   let ic = open_in pathfile in
   Marshal.from_channel ic;;
 

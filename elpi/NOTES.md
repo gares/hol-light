@@ -15,20 +15,25 @@
    ```
    #use "make.ml";;
    ```
-4. Load the Elpi extension:
+4. Save the status
+   ```
+   let core_st = get_hol_status();;
+   ```
+5. Load the Elpi extension:
    ```
    trace_parsed_terms := false;;
-   reserve_words ["^"];;
-   loadt "elpi/make.ml";;
-   needs "elpi/trace_parsed_terms.ml";;
-   unreserve_words ["^"];;
-   trace_parsed_terms := true;;
-   Gc.compact();;
+   loadt "elpi/make.ml";;  
    ```
+6. Change the status as needed
+   ```
+   unreserve_words ["^"];;
+   set_hol_status core_st;;
+   ```
+   and follow instructions on top of trace_parsed_terms.ml.
 
 ## Manually test one entry
 
-1. Load the trace code:
+1. Load the trace code if necessary:
    ```
    needs "elpi/trace_parsed_terms.ml";;
    ```
@@ -38,9 +43,10 @@
    ```
 3. Pick a term:
    ```
-   let stm,ptm,ift = el 2 pterms;;
+   let stm,ptm,st = el 2 pterms;;
    ```
 4. Run the elaborator on the string:
    ```
    let qtm = Hol_elpi.quotation stm;;
    ```
+5. Also see file test_parsed_terms.ml.

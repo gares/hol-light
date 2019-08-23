@@ -41,7 +41,12 @@ build-clause-fv (varp S _) (of (varp S _) Ty (varp S Ty) :- !).
  
 pred free-vars i:preterm, i:list preterm, o:list preterm.
 
-free-vars (varp S _ as V) L L :- (std.mem! L V ; env S _ _ ; overload S _ _ ; numeral S _), !.
+% NB: This version of free-vars is for parsed preterms,
+% where all variables occurs with a dummy pretype.
+free-vars (varp S TY as V) L L1 :-
+  overload S S1 _, !,
+  (overload _ _ _ :- !, fail) => free-vars (varp S1 TY as V) L L1.
+free-vars (varp S _ as V) L L :- (std.mem! L V ; env S _ _ ; numeral S _), !.
 free-vars (varp _ _ as V) L [V|L].
 free-vars (typing T _) L L1 :- free-vars T L L1.
 free-vars (combp T1 T2) L L2 :-
@@ -61,9 +66,12 @@ free-vars (absp (typing (varp _ _ as V) _) T) L L1 :-
 pred of o:preterm, o:pretype, o:preterm.
 
 :name "of:constant"
-of (varp S _) TY (constp S1 TY) :- overload S S1 CTY, refresh-cpretype CTY TY.
+of (varp S DTY) TY T :-
+  overload S S1 CTY,
+  refresh-cpretype CTY TY,
+  (overload _ _ _ :- !, fail) => of (varp S1 DTY) TY T.
+of (varp S _) (@con "num") N :- numeral S N, !.
 of (varp S _) TY (constp S TY) :- env S S CTY, refresh-cpretype CTY TY.
-of (varp S _) (@con "num") N :- numeral S N.
 
 pred is_varp o:string, o:pretype.
 

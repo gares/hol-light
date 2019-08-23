@@ -168,6 +168,9 @@ let rec term_eq tm1 tm2 =
   | _ -> false;;
 *)
 
+let contains_gabs tm =
+  exists (fun c -> name_of c = "GABS") (term_constants tm);;
+
 (* ------------------------------------------------------------------------- *)
 (* Ready to copy/paste instructions for building the traces.                 *)
 (* ------------------------------------------------------------------------- *)

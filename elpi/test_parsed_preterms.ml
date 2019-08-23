@@ -1,11 +1,4 @@
 (* ------------------------------------------------------------------------- *)
-(* Miscellanea.                                                              *)
-(* ------------------------------------------------------------------------- *)
-
-let contains_gabs tm =
-  exists (fun c -> name_of c = "GABS") (term_constants tm);;
-
-(* ------------------------------------------------------------------------- *)
 (* Setup.                                                                    *)
 (* ------------------------------------------------------------------------- *)
 
@@ -49,7 +42,7 @@ let term_noelab (_,ptm,tm,st) =
 
 let ko_terms = filter_progress term_noelab pterms;;
 length ko_terms;;
-(* Run 2019-08-22: About 30 terms in CORE fail this test. *)
+(* Run 2019-08-23: All terms in CORE pass this test. *)
 
 (* Returns true if the elaborator returns a different term. *)
 (* NB: Skips (i.e. return false) terms that contain the constant GABS. *)
@@ -81,6 +74,7 @@ do_list (fun (s,_,_,_,_,_) -> report s) ko_terms;;
 
 let (s,ptm,tm,st) = el 0 ko_terms;;
 set_hol_status st;;
+Hol_elpi.elaborate_preterm ptm;;
 (Hol_elpi.elaborate_preterm o fst o parse_preterm o lex o explode) "coprime";;
 
 filter_progress

@@ -22,7 +22,7 @@
 5. Load the Elpi extension:
    ```
    trace_parsed_terms := false;;
-   loadt "elpi/make.ml";;  
+   loadt "elpi/make.ml";;
    ```
 6. Change the status as needed
    ```

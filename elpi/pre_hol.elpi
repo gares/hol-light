@@ -141,6 +141,10 @@ ptmvars (lamp V_ B) Vs Ws :-
 %%         (varp S _) into (constp S T)
 %% ----------------------------------------------------------------------------
 
+pred overload i:string, o:string, o:cpretype. % env S S1 T resolve S as S1 : T
+pred env i:string, o:string, o:cpretype. % env S S1 T resolve S as S1 : T
+pred numeral i:string, o:preterm.
+
 pred ptmbind i:preterm, o:preterm.
 
 ptmbind T1 T2 :-
@@ -198,12 +202,6 @@ open-term (ptmbody X) R :- ptmunbind X R.
 open-term (ptmfree V B) X :- open-term (B V) X.
 
 %% ----------------------------------------------------------------------------
-%% Tactics.
-%% ----------------------------------------------------------------------------
-
-pred prove i:preterm, o:@thm.
-
-%% ----------------------------------------------------------------------------
 %% Some tests.
 %% ----------------------------------------------------------------------------
 
@@ -223,12 +221,9 @@ pred tests i:list any.
 tests [].
 tests [T|Ts] :- test1 T, tests Ts.
 
-macro @dummy :- ptycon "" [].
-macro @fun L :- ptycon "fun" L.
-macro @con X :- ptycon X [].
-
-main :-
-  print "Tests start ...",
+pred pre_hol_test.
+pre_hol_test :-
+  print "Pre HOL tests start ...",
   test1ok (ptyvars (uty "x") []),
   test1   (ptyvars (sty 1) []),
   test1 (ptyvars (ptycon "y" [uty "x", sty 3]) []),
@@ -241,29 +236,4 @@ main :-
   test1 (close-term (varp "x" (uty "t"))),
   test1 (close-term (absp (varp "x" (uty "t"))
                           (combp (varp "x" (uty "t")) (varp "x" (uty "s"))))),
-  (env "0" "0" (ptybody (ptycon "num" []))) =>
-    test1 (close-term (absp (varp "x" (uty "t"))
-                             (combp (varp "y" (uty "t"))
-                              (combp (varp "x" (uty "t")) (varp "0" @dummy))))),
-  (env "0" "0" (ptybody (ptycon "num" []))) =>
-    test1 (elab (absp (varp "x" (uty "t"))
-                             (combp (varp "y" (uty "t"))
-                              (combp (varp "x" (uty "t")) (varp "0" @dummy))))),
-  (env "0" "0" (ptybody (ptycon "num" []))) =>
-  (env "real_of_num" "real_of_num" (ptybody (@fun [@con "num", @con "real"]))) =>
-  (coercions [coercion "real_of_num" (ptybody (@fun [@con "num", @con "real"]))]) =>
-    test1 (elab (absp (typing (varp "x" (uty "t")) (@fun [@con "real", @con "bool"]))
-                             (combp (varp "y" (uty "t"))
-                              (combp (varp "x" (uty "t")) (varp "0" @dummy))))),
- (env "0" "0" (ptybody (ptycon "num" []))) =>
- (env "real_of_num" "real_of_num" (ptybody (@fun [@con "num", @con "real"]))) =>
- (env "complex_of_real" "complex_of_real" (ptybody (@fun [@con "real", @con "complex"]))) =>
-
-  (coercions [coercion "real_of_num"     (ptybody (@fun [@con "num",  @con "real"])),
-              coercion "complex_of_real" (ptybody (@fun [@con "real", @con "complex"]))
-             ]) =>
-    test1 (elab (absp (typing (varp "x" (uty "t")) (@fun [@con "complex", @con "bool"]))
-                              (combp (varp "x" (uty "t")) (varp "0" @dummy)))),
-  print "antiquot" {{ a + ^X }},
-
-  print "... tests finished.".
+  print "Pre HOL tests done.".

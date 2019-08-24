@@ -1,3 +1,17 @@
+%%% ===========================================================================
+%%% Elaborator for type inference and term reconstruction.
+%%%
+%%% Needs pre_hol.elpi.
+%%% ===========================================================================
+
+%% ----------------------------------------------------------------------------
+%% Handy macros.
+%% ----------------------------------------------------------------------------
+
+macro @dummy :- ptycon "" [].
+macro @fun L :- ptycon "fun" L.
+macro @con X :- ptycon X [].
+
 %% ----------------------------------------------------------------------------
 %% entrypoint
 %% ----------------------------------------------------------------------------
@@ -13,10 +27,6 @@ kind coercion type.
 type coercion string -> cpretype -> coercion.
 
 pred coercions o:list coercion. % DB
-
-pred overload i:string, o:string, o:cpretype. % env S S1 T resolve S as S1 : T
-pred env i:string, o:string, o:cpretype. % env S S1 T resolve S as S1 : T
-pred numeral i:string, o:preterm.
 
 %% ----------------------------------------------------------------------------
 %% main
@@ -124,9 +134,10 @@ report-all-failures-if-no-success P :-
 error L :- std.forall L (x\ print "Error:" x), fail.
 */
 
-
 pred trans-coercion o:pretype, o:pretype, o:preterm, o:preterm.
-trans-coercion X X1 T T :- X == X1, !.
+%% TODO: The notation == for same_term does work in the embedded interpreter,
+%% but does not work in the elpi toplevel.
+trans-coercion X X1 T T :- same_term X X1, !.
 trans-coercion X X T T.
 trans-coercion A B T R1 :-
   coercions Coercions,
@@ -135,3 +146,35 @@ trans-coercion A B T R1 :-
   %print "attempt" S ":" TS,
   refresh-cpretype TS (ptycon "fun" [A, A1]),
   trans-coercion A1 B (combp (constp S (ptycon "fun" [A, A1])) T) R1.
+
+%% ----------------------------------------------------------------------------
+%% Tests.
+%% ----------------------------------------------------------------------------
+
+pred elab_test.
+elab_test :-
+  print "Elab tests start ...",
+  (env "0" "0" (ptybody (ptycon "num" []))) =>
+    test1 (close-term (absp (varp "x" (uty "t"))
+                             (combp (varp "y" (uty "t"))
+                              (combp (varp "x" (uty "t")) (varp "0" @dummy))))),
+  (env "0" "0" (ptybody (ptycon "num" []))) =>
+    test1 (elab (absp (varp "x" (uty "t"))
+                             (combp (varp "y" (uty "t"))
+                              (combp (varp "x" (uty "t")) (varp "0" @dummy))))),
+  (env "0" "0" (ptybody (ptycon "num" []))) =>
+  (env "real_of_num" "real_of_num" (ptybody (@fun [@con "num", @con "real"]))) =>
+  (coercions [coercion "real_of_num" (ptybody (@fun [@con "num", @con "real"]))]) =>
+    test1 (elab (absp (typing (varp "x" (uty "t")) (@fun [@con "real", @con "bool"]))
+                             (combp (varp "y" (uty "t"))
+                              (combp (varp "x" (uty "t")) (varp "0" @dummy))))),
+ (env "0" "0" (ptybody (ptycon "num" []))) =>
+ (env "real_of_num" "real_of_num" (ptybody (@fun [@con "num", @con "real"]))) =>
+ (env "complex_of_real" "complex_of_real" (ptybody (@fun [@con "real", @con "complex"]))) =>
+
+  (coercions [coercion "real_of_num"     (ptybody (@fun [@con "num",  @con "real"])),
+              coercion "complex_of_real" (ptybody (@fun [@con "real", @con "complex"]))
+             ]) =>
+    test1 (elab (absp (typing (varp "x" (uty "t")) (@fun [@con "complex", @con "bool"]))
+                              (combp (varp "x" (uty "t")) (varp "0" @dummy)))),
+  print "Elab tests done.".

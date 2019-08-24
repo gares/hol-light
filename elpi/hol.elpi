@@ -26,6 +26,7 @@ pred close-coercion i:(pair string pretype), o:coercion.
 close-coercion (pr S T) (coercion S CT) :-
   close-pretype T CT.
 
+pred prove i:preterm, o:@thm.
 prove (combp (combp (constp "=" _) X) X) Thm :-
   hol.rule.refl X Thm.
 
@@ -439,3 +440,11 @@ test :-
   print {{: a^(3) }}.
 */
 
+%% ----------------------------------------------------------------------------
+%% Tests for this and the other modules (pre_hol, elab, etc).
+%% ----------------------------------------------------------------------------
+
+main :-
+  pre_hol_test,
+  elab_test,
+  print "antiquot" {{ a + ^X }}.

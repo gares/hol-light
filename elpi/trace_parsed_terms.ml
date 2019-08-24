@@ -193,6 +193,7 @@ assert (load_parsed_terms pathfile = !parsed_terms);;
 (* ------------------------------------------------------------------------- *)
 (* Multivariate *)
 (*
+trace_parsed_terms := true;;
 unreserve_words ["^"];;
 parsed_terms := [];;
 Gc.compact();;

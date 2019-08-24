@@ -11,22 +11,24 @@
    ```
    rlwrap ocaml -I `camlp5 -where` `camlp5 -where`/gramlib.cma
    ```
-3. Load hol:
+3. Load hol and save the status:
    ```
    #use "make.ml";;
-   ```
-4. Save the status
-   ```
    let core_st = get_hol_status();;
    ```
-5. Load the Elpi extension:
+4. Load the Elpi extension:
    ```
    trace_parsed_terms := false;;
    loadt "elpi/make.ml";;
    ```
-6. Change the status as needed
+5. Change the status as needed, e.g.:
    ```
+   trace_parsed_terms := false;;
+   trace_parsed_terms := true;;
+   reserve_words ["^"];;
    unreserve_words ["^"];;
+   type_invention_warning := false;;
+   type_invention_warning := true;;
    set_hol_status core_st;;
    ```
    and follow instructions on top of trace_parsed_terms.ml.

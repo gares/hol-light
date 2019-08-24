@@ -1,0 +1,157 @@
+%%% ===========================================================================
+%%% Type inference and term reconstruction.
+%%%
+%%% An experiment using continuation-passing style.
+%%% ===========================================================================
+
+%% ----------------------------------------------------------------------------
+%% Entrypoint.
+%% ----------------------------------------------------------------------------
+
+pred elaborate i:preterm, o:preterm.
+elaborate X Y :- infer X Y _A true.
+
+%% ----------------------------------------------------------------------------
+%% Main inference predicate.
+%%
+%%   infer X Y A K.
+%%
+%% Where:
+%%   X = input (parsed) term;
+%%   Y = output (inferred) term;
+%%   A = inferred type;
+%%   K = continuation.
+%% ----------------------------------------------------------------------------
+
+pred infer i:preterm, o:preterm, o:pretype, i:prop.
+
+%% ----------------------------------------------------------------------------
+%% Variable name convention:
+%% A, B, C pretypes;
+%%       D dummy pretype;
+%%       V preterm variable;
+%%    X, F arbitrary preterms;
+%%       S string (name of variable or constant).
+%% ----------------------------------------------------------------------------
+
+%%% Variables.
+
+infer (varp S _) X A K :-
+    vinfer S X A,
+    if (X = varp _ _)
+       ((pi D \ vinfer S X A :- print "Found:" X, !) => K)
+       K.
+
+%%% Combinations.
+
+infer (combp F X) (combp F1 X1) B K :-
+  infer F F1 (ptycon "fun" [A,B]) (infer X X1 A K).
+
+%%% Abstractions.
+
+infer (absp (varp S _) X) (absp (varp S A) X1) (ptycon "fun" [A,B]) K :-
+    ((pi D \ vinfer S X A :- !) => infer X X1 B K).
+
+%%% Overloading.
+
+pred vinfer i:string, o:preterm, o:pretype.
+vinfer S X A :-
+    overload S S1 C,
+    refresh-cpretype C A, cinfer S1 X A
+    ;
+    not (overload S _ _), cinfer S X A.
+
+%%% Constants.
+
+pred cinfer i:string, o:preterm, o:pretype.
+cinfer S (constp S A) A :- env S _ C, !, refresh-cpretype C A.
+cinfer S (varp S A) A.
+
+%% ----------------------------------------------------------------------------
+%% Handy macros.
+%% ----------------------------------------------------------------------------
+
+%% Constant types.
+macro @bool :- ptycon "bool" [].
+macro @num :- ptycon "num" [].
+macro @ind :- ptycon "ind" [].
+
+%% Type variables.
+macro @aty :- uty "A".
+macro @bty :- uty "B".
+
+%% Type constructions.
+macro @con A :- ptycon A [].
+macro @fun A B :- ptycon "fun" [A, B].
+macro @fun2 A B C :- ptycon "fun" [A, ptycon "fun" [B, C]].
+
+% Term variables.
+macro @a :- varp "a" (ptycon "" []).
+macro @b :- varp "b" (ptycon "" []).
+macro @x :- varp "x" (ptycon "" []).
+macro @y :- varp "y" (ptycon "" []).
+macro @z :- varp "z" (ptycon "" []).
+macro @f :- varp "f" (ptycon "" []).
+macro @g :- varp "g" (ptycon "" []).
+macro @h :- varp "h" (ptycon "" []).
+
+% Simple terms.
+macro @i S :- varp S (ptycon "" []).
+
+% Binary operators.
+macro @eq X Y :- combp (combp (@i "eq") X) Y.
+macro @pr X Y :- combp (combp (@i "pr") X) Y.
+
+%% ----------------------------------------------------------------------------
+%% Tests.
+%% ----------------------------------------------------------------------------
+
+pred status o:list prop.
+status
+  [ env "a" "a" (ptybody @num)
+  , env "b" "b" (ptybody @bool)
+  , env "f" "f" (ptybody (@fun @num @num))
+  , env "g" "g" (ptybody (@fun2 @num @bool @num))
+  , env "id" "id" (ptyfree (uty "A") A \ ptybody (@fun A A))
+  , env "eq" "eq" (ptyfree (uty "A") A \ ptybody (@fun2 A A @bool))
+  , overload "z" "u" (ptybody (@fun @num @ind))
+  , overload "z" "v" (ptybody (@fun @bool @ind))
+  ].
+
+pred infer_test.
+infer_test :- status PP, PP => run_tests
+  [ ok @a
+  , ok @x
+  , ok (combp @f @a)
+  , ok (combp @h @a)
+  , ok (combp @z @a)
+  , ok (combp @z @b)
+  , ko (combp @f @b)
+  , ko (combp @a @b)
+  , ok (combp @g @a)
+  , ko (combp @g @b)
+  , ok (combp (@i "id") @a)
+  , ok (combp (@i "id") @b)
+  , ok (combp (@i "id") @x)
+  , ok (@eq @a @x)
+  , ok (absp @x @x)
+  , ok (@eq (@i "id") (absp @x @a))
+  ].
+
+%% ----------------------------------------------------------------------------
+%% Rudimentary testing framework.
+%% ----------------------------------------------------------------------------
+
+kind test type.
+type ok preterm -> test.
+type ko preterm -> test.
+
+pred run_test i:test.
+run_test (ok X) :- elaborate X Y, !, print "Ok:" Y.
+run_test (ok X) :- print "Ok: Test failure:" X.
+run_test (ko X) :- elaborate X _, !, print "Ko: Test failure:" X.
+run_test (ko X) :- print "Ko:" X.
+
+pred run_tests i:list test.
+run_tests [] :- print "Tests done".
+run_tests [T|Ts] :- run_test T, run_tests Ts.

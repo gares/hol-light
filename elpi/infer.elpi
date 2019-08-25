@@ -5,6 +5,16 @@
 %%% ===========================================================================
 
 %% ----------------------------------------------------------------------------
+%% Handy macros.
+%% ----------------------------------------------------------------------------
+
+% Types.
+macro @dty :- ptycon "" [].
+macro @bool :- ptycon "bool" [].
+macro @con A :- ptycon A [].
+macro @fun A B :- ptycon "fun" [A, B].
+
+%% ----------------------------------------------------------------------------
 %% Entrypoint.
 %% ----------------------------------------------------------------------------
 
@@ -39,18 +49,18 @@ pred infer i:preterm, o:preterm, o:pretype, i:prop.
 infer (varp S _) X A K :-
     vinfer S X A,
     if (X = varp _ _)
-       ((pi D \ vinfer S X A :- print "Found:" X, !) => K)
+       ((vinfer S X A :- !) => K)
        K.
 
 %%% Combinations.
 
 infer (combp F X) (combp F1 X1) B K :-
-  infer F F1 (ptycon "fun" [A,B]) (infer X X1 A K).
+  infer F F1 (@fun A B) (infer X X1 A K).
 
 %%% Abstractions.
 
-infer (absp (varp S _) X) (absp (varp S A) X1) (ptycon "fun" [A,B]) K :-
-    ((pi D \ vinfer S X A :- !) => infer X X1 B K).
+infer (absp (varp S _) X) (absp (varp S A) X1) (@fun A B) K :-
+    ((vinfer S X A :- !) => infer X X1 B K).
 
 %%% Type annotations.
 
@@ -72,11 +82,10 @@ cinfer S (constp S A) A :- env S _ C, !, refresh-cpretype C A.
 cinfer S (varp S A) A.
 
 %% ----------------------------------------------------------------------------
-%% Handy macros.
+%% Further macros.
 %% ----------------------------------------------------------------------------
 
 %% Constant types.
-macro @bool :- ptycon "bool" [].
 macro @num :- ptycon "num" [].
 macro @ind :- ptycon "ind" [].
 
@@ -85,22 +94,20 @@ macro @aty :- uty "A".
 macro @bty :- uty "B".
 
 %% Type constructions.
-macro @con A :- ptycon A [].
-macro @fun A B :- ptycon "fun" [A, B].
 macro @fun2 A B C :- ptycon "fun" [A, ptycon "fun" [B, C]].
 
 % Term variables.
-macro @a :- varp "a" (ptycon "" []).
-macro @b :- varp "b" (ptycon "" []).
-macro @x :- varp "x" (ptycon "" []).
-macro @y :- varp "y" (ptycon "" []).
-macro @z :- varp "z" (ptycon "" []).
-macro @f :- varp "f" (ptycon "" []).
-macro @g :- varp "g" (ptycon "" []).
-macro @h :- varp "h" (ptycon "" []).
+macro @a :- varp "a" @dty.
+macro @b :- varp "b" @dty.
+macro @x :- varp "x" @dty.
+macro @y :- varp "y" @dty.
+macro @z :- varp "z" @dty.
+macro @f :- varp "f" @dty.
+macro @g :- varp "g" @dty.
+macro @h :- varp "h" @dty.
 
 % Simple terms.
-macro @i S :- varp S (ptycon "" []).
+macro @i S :- varp S @dty.
 
 % Binary operators.
 macro @eq X Y :- combp (combp (@i "eq") X) Y.

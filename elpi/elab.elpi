@@ -49,26 +49,6 @@ pred build-clause-fv i:preterm, o:prop.
 
 build-clause-fv (varp S _) (of (varp S _) Ty (varp S Ty) :- !).
  
-pred free-vars i:preterm, i:list preterm, o:list preterm.
-
-% NB: This version of free-vars is for parsed preterms,
-% where all variables occurs with a dummy pretype.
-free-vars (varp S TY as V) L L1 :-
-  overload S S1 _, !,
-  (overload _ _ _ :- !, fail) => free-vars (varp S1 TY as V) L L1.
-free-vars (varp S _ as V) L L :- (std.mem! L V ; env S _ _ ; numeral S _), !.
-free-vars (varp _ _ as V) L [V|L].
-free-vars (typing T _) L L1 :- free-vars T L L1.
-free-vars (combp T1 T2) L L2 :-
-  free-vars T1 L  L1,
-  free-vars T2 L1 L2.
-free-vars (absp (varp _ _ as V) T) L L1 :-
-  (pi L\ free-vars V L L :- !) =>
-  free-vars T L L1.
-free-vars (absp (typing (varp _ _ as V) _) T) L L1 :-
-  (pi L\ free-vars V L L :- !) =>
-  free-vars T L L1.
-
 %% ----------------------------------------------------------------------------
 %% typing
 %% ----------------------------------------------------------------------------

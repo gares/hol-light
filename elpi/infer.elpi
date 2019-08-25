@@ -52,6 +52,10 @@ infer (combp F X) (combp F1 X1) B K :-
 infer (absp (varp S _) X) (absp (varp S A) X1) (ptycon "fun" [A,B]) K :-
     ((pi D \ vinfer S X A :- !) => infer X X1 B K).
 
+%%% Type annotations.
+
+infer (typing X A) X1 A K :- infer X X1 A K.
+
 %%% Overloading.
 
 pred vinfer i:string, o:preterm, o:pretype.

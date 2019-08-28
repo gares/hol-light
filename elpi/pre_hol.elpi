@@ -135,6 +135,20 @@ ptmvars (lamp V_ B) Vs Ws :-
   pi x \ (pi L\ ptmvars x L L) => ptmvars (B x) Vs Ws.
 
 %% ----------------------------------------------------------------------------
+%% Handy macros for building pretypes and preterms.
+%% ----------------------------------------------------------------------------
+
+% Types.
+macro @dty :- ptycon "" [].
+macro @bool :- ptycon "bool" [].
+macro @con A :- ptycon A [].
+macro @fun A B :- ptycon "fun" [A, B].
+macro @fun2 A B C :- @fun A (@fun B C).
+
+% Terms.
+macro @binop Op X Y :- combp (combp Op X) Y.
+
+%% ----------------------------------------------------------------------------
 %% Turning nominal abstractions into bound HOAS abstractions and recognizes
 %% global constants declared in `env`
 %% That is (absp _ _) into (lamp _ _)
@@ -227,41 +241,91 @@ free-vars (absp (typing (varp _ _ as V) _) T) L L1 :-
   free-vars T L L1.
 
 %% ----------------------------------------------------------------------------
-%% Some tests.
+%% Free variables.
 %% ----------------------------------------------------------------------------
 
-pred test1 i:(A->prop).
-pred test1ok i:(A->prop).
+pred frees i:preterm, o:list preterm.
+frees X Vs :- frees.rec X [] Vs.
 
-test1ok P :-
-  print "Test >>>" P, P Result, !, print "  OK <<<" Result;
-  print "  FAILURE: " P.
+pred frees.rec i:preterm, i:list preterm, o:list preterm.
+frees.rec V L L :- std.mem! L V, !.
+frees.rec (varp _ _ as V) L [V|L].
+frees.rec (constp _ _) L L.
+frees.rec (combp X Y) L L1 :-
+    frees.rec X L Xvars,
+    frees.rec Y Xvars L1.
+frees.rec (absp X Y) L L1 :-
+    frees.rec X L Xvars,
+    frees.rec Y L Yvars,
+    subtract Yvars Xvars L1.
 
-test1 P :-
-  print "Test >>>" P, P Result, !, print "  OK <<<" Result;
-  print "  FAILURE: " P.
+pred union i:list A, i:list A, o:list A.
+union [] Ys Ys.
+union [X|Xs] Ys Zs :- std.mem! Ys X, !, union Xs Ys Zs.
+union [X|Xs] Ys [X|Zs] :- union Xs Ys Zs.
 
-pred tests i:list any.
+pred subtract i:list A, i:list A, o:list A.
+subtract [] _ [].
+subtract [X|Xs] Ys Zs :- std.mem! Ys X, !, subtract Xs Ys Zs.
+subtract [X|Xs] Ys [X|Zs] :- subtract Xs Ys Zs.
 
-tests [].
-tests [T|Ts] :- test1 T, tests Ts.
+pred list_pmk_forall i:list preterm, i:preterm, o:preterm.
+list_pmk_forall [] X X.
+list_pmk_forall [V|Vs] X (absp V X1) :- list_pmk_forall Vs X X1.
 
-pred pre_hol_test.
-pre_hol_test :-
-  print "Pre HOL tests start ...",
-  test1ok (ptyvars (uty "x") []),
-  test1   (ptyvars (sty 1) []),
-  test1 (ptyvars (ptycon "y" [uty "x", sty 3]) []),
-  test1 (ptyclose [uty "x"] (uty "x")),
-  test1 (ptyclose [sty 1] (uty "x")),
-  test1 (close-pretype (ptycon "fun" [uty "x", sty 1])),
-  test1 (ptmbind (absp (varp "x" (uty "t")) (varp "x" (uty "t")))),
-  test1 (ptmbind (absp (varp "x" (sty 0)) (varp "x" (uty "t")))),
-  test1 (ptmvars (combp (varp "x" (uty "t")) (varp "y" (sty 1))) []),
-  test1 (close-term (varp "x" (uty "t"))),
-  test1 (close-term (absp (varp "x" (uty "t"))
-                          (combp (varp "x" (uty "t")) (varp "x" (uty "s"))))),
-  test1 (free-vars (absp (varp "x" (ptycon "" []))
-                         (combp (varp "x" (ptycon "" [])) (varp "y" (ptycon "" []))))
-                   []),
-  print "Pre HOL tests done.".
+%% ----------------------------------------------------------------------------
+%% Basic type-checking algorithm for HOL on preterms.
+%% ----------------------------------------------------------------------------
+
+%% NB: the second argument needs the output mode.
+pred has_type i:preterm, o:pretype.
+has_type (varp _ A) A.
+has_type (constp _ A) A.
+has_type (combp X Y) B :- has_type X (@fun A B), has_type Y A.
+has_type (absp (varp _ A) X) (@fun A B) :- has_type X B.
+has_type (typing X A) A :- has_type X A.
+
+%%% ---------------------------------------------------------------------------
+%%% Tests.
+%%% ---------------------------------------------------------------------------
+
+shorten test.{ run-tests, ok, ko, okb, kob, ok-eq, section }.
+shorten verbosity.{ quiet, terse, info, verbose, debug, with-verbosity }.
+
+pred pre_hol_tests.
+pre_hol_tests :- run-tests
+[ section "Pre HOL"
+, ok-eq [uty "x"] (ptyvars (uty "x") [])
+, ok-eq [sty 1] (ptyvars (sty 1) [])
+, ok-eq [sty 3, uty "x"] (ptyvars (ptycon "y" [uty "x", sty 3]) [])
+, ok-eq (ptyfree (uty "x") A \ (ptybody A))
+        (ptyclose [uty "x"] (uty "x"))
+, ok-eq (ptyfree (sty 1) A \ ptybody (uty "x"))
+        (ptyclose [sty 1] (uty "x"))
+, ok-eq (ptyfree (sty 1) A \ ptyfree (uty "x") B \
+           ptybody (ptycon "fun" [B, A]))
+        (close-pretype (ptycon "fun" [uty "x", sty 1]))      
+, ok-eq (lamp (varp "x" _) B \ B)
+        (ptmbind (absp (varp "x" (uty "t")) (varp "x" (uty "t"))))
+, ok-eq (lamp (varp "x" (sty 0)) B \ varp "x" (uty "t"))
+        (ptmbind (absp (varp "x" (sty 0)) (varp "x" (uty "t"))))
+, ok-eq [varp "y" (sty 1), varp "x" (uty "t")]
+        (ptmvars (combp (varp "x" (uty "t")) (varp "y" (sty 1))) [])
+, ok-eq (ptmfree (varp "x" (uty "t")) A \ ptmbody A)
+        (close-term (varp "x" (uty "t")))
+, ok-eq (ptmfree (varp "x" (uty "s")) A \
+           ptmbody (lamp (varp "x" _) B \ combp B A))
+        (close-term (absp (varp "x" (uty "t"))
+          (combp (varp "x" (uty "t")) (varp "x" (uty "s")))))
+, ok-eq [varp "y" (ptycon "" [])]
+        (free-vars (absp (varp "x" (ptycon "" []))
+                      (varp "y" (ptycon "" []))) [])
+, ok-eq [varp "y" (uty "A")]
+        (frees (absp (varp "x" (uty "A"))
+          (combp (varp "x" (uty "A")) (varp "y" (uty "A")))))
+, ok (has_type (varp "x" (uty "A")) (uty "A"))
+, ok (has_type (constp "y" (uty "U")) (uty "U"))
+, ok (has_type (combp (constp "f" (ptycon "fun" [uty "A", uty "B"]))
+                      (varp "x" (uty "A")))
+               (uty "B"))
+].

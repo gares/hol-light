@@ -1,0 +1,123 @@
+%%% ===========================================================================
+%%% Rudimentary testing framework.
+%%%
+%%% Need: lib (for verbosity).
+%%% ===========================================================================
+
+shorten verbosity.{ quiet, terse, info, verbose, debug,
+                    with-verbosity, when-verbosity }.
+
+namespace test {
+
+%% ----------------------------------------------------------------------------
+%% Ontology for tests, outcomes, statistics.
+%% ----------------------------------------------------------------------------
+
+kind test, outcome, test-stats type.
+type test-stats int -> int -> test-stats. % (Num, Succ) = (total, success). 
+type success, failure, ignore string -> outcome.
+
+%% ----------------------------------------------------------------------------
+%% Basic stock of predefined tests.
+%%
+%% More tests can be defined by:
+%%   1. Adding a new constructor for the type `test.test`.
+%%   2. Adding more clauses to `test.run-test`.
+%% ----------------------------------------------------------------------------
+
+type section string -> test.
+type ok, ko prop -> test.
+type okb, kob (bool -> prop) -> test.
+type ok-eq A -> (A -> prop) -> test.
+
+pred run-test i:test, o:outcome.
+
+run-test (section Msg) (ignore "Section title.") :-
+    when-verbosity terse (print "** Section:" Msg).
+
+run-test (ok P) (success "") :- P, !.
+run-test (ok _) (failure "").
+
+run-test (ko P) (failure "Should fail.") :- P, !.
+run-test (ko _) (success "Call fails, as expected.").
+
+run-test (ok-eq A P) Ret :- P Out, !,
+    if (equal Out A)
+       (Ret = success "")
+       (S is "Wrong return value.\nExpected: " ^ {term_to_string A} ^
+              "\n  Result: " ^ {term_to_string Out},
+        Ret = failure S).
+run-test (ok-eq _ _) (failure "No solution found.").
+
+run-test (okb P) Ret :-
+    sigma X\ P X, !,
+    % Todo: what if X is flexible?
+    if (equal tt X)
+       (Ret = success "")
+       (Ret = failure "Returned ff.").
+run-test (okb _) (failure "No solution found.").
+
+run-test (kob P) Ret :-
+    sigma X\ P X, !,
+    % Todo: what if X is flexible?
+    if (equal ff X)
+       (Ret = success "")
+       (Ret = failure "Returned tt.").
+run-test (kob _) (failure "No solution found.").
+
+%% ----------------------------------------------------------------------------
+%% The infrastructure.
+%% ----------------------------------------------------------------------------
+
+pred run-tests i:(list test).
+run-tests Tests :-
+    do!
+    [ when-verbosity terse (print "run-tests: Start.")
+    , run-tests-iter Tests (test-stats 0 0) (test-stats S N)
+    , when-verbosity terse (print "run-tests: Done!")
+    , when-verbosity quiet (print "Passed" S "out of" N)
+    ].
+
+pred run-tests-iter i:(list test), i:test-stats, o:test-stats.
+run-tests-iter [] S S.
+run-tests-iter [T|Ts] S S2 :-
+    do!
+    [ when-verbosity info (print "-- Test:" T)
+    , run-test T R
+    , report-test R S S1
+    , when-verbosity info (print "   Exit:" T)
+    ],
+    run-tests-iter Ts S1 S2.
+run-tests-iter [T|_] _ _ :-
+    std.fatal-error-w-data "Unknown test type" T.
+
+pred report-test i:outcome, i:test-stats, o:test-stats.
+report-test (failure Msg) (test-stats Num Succ) (test-stats Num1 Succ) :-
+    Num1 is Num + 1,
+    when-verbosity quiet (
+        print "!! FAILURE: Test number" Num1,
+        print-reason Msg
+    ).
+report-test (success Msg) (test-stats Num Succ) (test-stats Num1 Succ1) :-
+    Num1 is Num + 1,
+    Succ1 is Succ + 1,
+    when-verbosity info (
+        print "   SUCCESS: Test number" Num1,
+        print-reason Msg
+    ).
+report-test (ignore Msg) S S :-
+    when-verbosity verbose (print "   IGNORE:" Msg).
+
+pred print-reason i:string.
+print-reason "" :- !.
+print-reason Msg :- print "   Reason:" Msg.
+
+% To be removed when same_term will be available.
+pred equal i:A, i:A.
+equal A A.
+
+pred do! i:list prop.
+do! [].
+do! [P|PS] :- P, !, do! PS.
+
+}

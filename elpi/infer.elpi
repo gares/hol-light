@@ -5,7 +5,7 @@
 %%% ===========================================================================
 
 %% ----------------------------------------------------------------------------
-%% Handy macros.
+%% Handy macros for building pretypes and preterms.
 %% ----------------------------------------------------------------------------
 
 % Types.
@@ -13,6 +13,10 @@ macro @dty :- ptycon "" [].
 macro @bool :- ptycon "bool" [].
 macro @con A :- ptycon A [].
 macro @fun A B :- ptycon "fun" [A, B].
+macro @fun2 A B C :- @fun A (@fun B C).
+
+% Terms.
+macro @binop Op X Y :- combp (combp Op X) Y.
 
 %% ----------------------------------------------------------------------------
 %% Entrypoint.
@@ -60,7 +64,25 @@ infer (combp F X) (combp F1 X1) B K :-
 %%% Abstractions.
 
 infer (absp (varp S _) X) (absp (varp S A) X1) (@fun A B) K :-
-    ((vinfer S X A :- !) => infer X X1 B K).
+    !,
+    ((vinfer S X A :- !) => infer X X1 B true),
+    K.
+
+% % Generalized abstractions.
+% infer (absp X Y) (combp GABS GFUN) FunTy K :-
+%     FunTy = @fun A B,
+%     GABS = constp "GABS" (@fun (@fun FunTy @bool) FunTy),
+%     GFUN = absp FVAR Body,
+%     FVAR = varp "f" FunTy,
+%     GEQ = @binop (constp "GEQ" (@fun2 B B @bool))
+%                  (combp FVAR X1)
+%                  Y1,
+%     infer X X1 A
+%         ( frees X1 Vs,
+%           list_pmk_forall Vs GEQ Body,
+%           infer Y Y1 B true
+%         ),
+%     K.
 
 %%% Type annotations.
 
@@ -93,9 +115,6 @@ macro @ind :- ptycon "ind" [].
 macro @aty :- uty "A".
 macro @bty :- uty "B".
 
-%% Type constructions.
-macro @fun2 A B C :- ptycon "fun" [A, ptycon "fun" [B, C]].
-
 % Term variables.
 macro @a :- varp "a" @dty.
 macro @b :- varp "b" @dty.
@@ -114,6 +133,22 @@ macro @eq X Y :- combp (combp (@i "eq") X) Y.
 macro @pr X Y :- combp (combp (@i "pr") X) Y.
 
 %% ----------------------------------------------------------------------------
+%% Extend testing framework.
+%% ----------------------------------------------------------------------------
+
+shorten test.{ test, run-tests, run-test, success, failure,
+               ok, ko, okb, kob, ok-eq, section }.
+shorten verbosity.{ quiet, terse, info, verbose, debug, with-verbosity }.
+
+type ok-elaborate preterm -> test.
+type ko-elaborate preterm -> test.
+
+run-test (ok-elaborate X) (success "") :- sigma Y \ elaborate X Y, !.
+run-test (ok-elaborate _) (failure "Should success").
+run-test (ko-elaborate X) (failure "Should fail") :- elaborate X _, !.
+run-test (ko-elaborate _) (success "").
+
+%% ----------------------------------------------------------------------------
 %% Tests.
 %% ----------------------------------------------------------------------------
 
@@ -130,39 +165,22 @@ status
   ].
 
 pred infer_test.
-infer_test :- status PP, PP => run_tests
-  [ ok @a
-  , ok @x
-  , ok (combp @f @a)
-  , ok (combp @h @a)
-  , ok (combp @z @a)
-  , ok (combp @z @b)
-  , ko (combp @f @b)
-  , ko (combp @a @b)
-  , ok (combp @g @a)
-  , ko (combp @g @b)
-  , ok (combp (@i "id") @a)
-  , ok (combp (@i "id") @b)
-  , ok (combp (@i "id") @x)
-  , ok (@eq @a @x)
-  , ok (absp @x @x)
-  , ok (@eq (@i "id") (absp @x @a))
+infer_test :- status PP, PP => run-tests
+  [ section "Elaborate"
+  , ok-elaborate @a
+  , ok-elaborate @x
+  , ok-elaborate (combp @f @a)
+  , ok-elaborate (combp @h @a)
+  , ok-elaborate (combp @z @a)
+  , ok-elaborate (combp @z @b)
+  , ko-elaborate (combp @f @b)
+  , ko-elaborate (combp @a @b)
+  , ok-elaborate (combp @g @a)
+  , ko-elaborate (combp @g @b)
+  , ok-elaborate (combp (@i "id") @a)
+  , ok-elaborate (combp (@i "id") @b)
+  , ok-elaborate (combp (@i "id") @x)
+  , ok-elaborate (@eq @a @x)
+  , ok-elaborate (absp @x @x)
+  , ok-elaborate (@eq (@i "id") (absp @x @a))
   ].
-
-%% ----------------------------------------------------------------------------
-%% Rudimentary testing framework.
-%% ----------------------------------------------------------------------------
-
-kind test type.
-type ok preterm -> test.
-type ko preterm -> test.
-
-pred run_test i:test.
-run_test (ok X) :- elaborate X Y, !, print "Ok:" Y.
-run_test (ok X) :- print "Ok: Test failure:" X.
-run_test (ko X) :- elaborate X _, !, print "Ko: Test failure:" X.
-run_test (ko X) :- print "Ko:" X.
-
-pred run_tests i:list test.
-run_tests [] :- print "Tests done".
-run_tests [T|Ts] :- run_test T, run_tests Ts.

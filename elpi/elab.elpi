@@ -12,6 +12,13 @@ macro @dummy :- ptycon "" [].
 macro @fun L :- ptycon "fun" L.
 macro @con X :- ptycon X [].
 
+macro @bool    :- @con "bool".
+macro @num     :- @con "num".
+macro @real    :- @con "real".
+macro @complex :- @con "complex".
+
+macro @var S :- varp S @dummy.
+
 %% ----------------------------------------------------------------------------
 %% entrypoint
 %% ----------------------------------------------------------------------------
@@ -77,7 +84,7 @@ of (absp (typing (varp S D) Src) F) (@fun [Src,Tgt]) (absp (varp S Src) F1) :-
 
 :name "of:application"
 of (combp A B) Tgt (combp A1 B1) :-
-  of A (ptycon "fun" [Src,Tgt]) A1,
+  of A (@fun [Src,Tgt]) A1,
   of-coerce B Src B1.
 of (typing T TY) TY T1 :-
   of-coerce T TY T1.
@@ -124,37 +131,89 @@ trans-coercion A B T R1 :-
   %print "looking for a coercion" A "->" B "for" T,
   std.mem Coercions (coercion S TS),
   %print "attempt" S ":" TS,
-  refresh-cpretype TS (ptycon "fun" [A, A1]),
-  trans-coercion A1 B (combp (constp S (ptycon "fun" [A, A1])) T) R1.
+  refresh-cpretype TS (@fun [A, A1]),
+  trans-coercion A1 B (combp (constp S (@fun [A, A1])) T) R1.
 
 %% ----------------------------------------------------------------------------
 %% Tests.
 %% ----------------------------------------------------------------------------
 
-pred elab_test.
-elab_test :-
-  print "Elab tests start ...",
-  (env "0" "0" (ptybody (ptycon "num" []))) =>
-    test1 (close-term (absp (varp "x" (uty "t"))
-                             (combp (varp "y" (uty "t"))
-                              (combp (varp "x" (uty "t")) (varp "0" @dummy))))),
-  (env "0" "0" (ptybody (ptycon "num" []))) =>
-    test1 (elab (absp (varp "x" (uty "t"))
-                             (combp (varp "y" (uty "t"))
-                              (combp (varp "x" (uty "t")) (varp "0" @dummy))))),
-  (env "0" "0" (ptybody (ptycon "num" []))) =>
-  (env "real_of_num" "real_of_num" (ptybody (@fun [@con "num", @con "real"]))) =>
-  (coercions [coercion "real_of_num" (ptybody (@fun [@con "num", @con "real"]))]) =>
-    test1 (elab (absp (typing (varp "x" (uty "t")) (@fun [@con "real", @con "bool"]))
-                             (combp (varp "y" (uty "t"))
-                              (combp (varp "x" (uty "t")) (varp "0" @dummy))))),
- (env "0" "0" (ptybody (ptycon "num" []))) =>
- (env "real_of_num" "real_of_num" (ptybody (@fun [@con "num", @con "real"]))) =>
- (env "complex_of_real" "complex_of_real" (ptybody (@fun [@con "real", @con "complex"]))) =>
+pred tiny_env o:list prop.
+tiny_env
+  [ env "0" "0" (ptybody @num)
+  , env "real_of_num" "real_of_num" (ptybody (@fun [@num, @real]))
+  , env "complex_of_real" "complex_of_real" (ptybody (@fun [@real, @complex]))
+  , coercions [coercion "real_of_num" (ptybody (@fun [@num, @real]))]
+  ].
 
-  (coercions [coercion "real_of_num"     (ptybody (@fun [@con "num",  @con "real"])),
-              coercion "complex_of_real" (ptybody (@fun [@con "real", @con "complex"]))
-             ]) =>
-    test1 (elab (absp (typing (varp "x" (uty "t")) (@fun [@con "complex", @con "bool"]))
-                              (combp (varp "x" (uty "t")) (varp "0" @dummy)))),
-  print "Elab tests done.".
+pred small_env o:list prop.
+small_env
+  [ env "0" "0" (ptybody @num)
+  , env "real_of_num" "real_of_num" (ptybody (@fun [@num, @real]))
+  , env "complex_of_real" "complex_of_real" (ptybody (@fun [@real, @complex]))
+  , coercions
+    [ coercion "real_of_num"     (ptybody (@fun [@num,  @real]))
+    , coercion "complex_of_real" (ptybody (@fun [@real, @complex]))
+    ]
+  ].
+
+shorten test.{ run-tests, ok, ko, okb, kob, ok-eq, section }.
+
+pred elab_tests.
+elab_tests :-
+  tiny_env TinyEnv,
+  TinyEnv => run-tests
+  [ section "close-term"
+  , ok-eq
+      (ptmfree (varp "y" (uty "t")) Y \
+        ptmbody (lamp (varp "x" (@con "1")) X \
+          combp Y (combp X (constp "0" @dummy))))
+      (close-term
+        (absp (varp "x" (uty "t"))
+          (combp (varp "y" (uty "t"))
+            (combp (varp "x" (uty "t")) (@var "0")))))
+  , ok-eq
+      (ptmfree (varp "y" (uty "t")) Y \
+        ptmbody (lamp (varp "x" (uty "t")) X \
+          combp Y (combp X (constp "0" @dummy))))
+      (close-term
+        (absp (varp "x" (uty "t"))
+          (combp (varp "y" (uty "t"))
+            (combp (varp "x" (uty "t")) (@var "0")))))
+  , section "elab"
+  , ok-eq
+      (absp (varp "x" (@fun [@num, @con "1"]))
+        (combp (varp "y" (@fun [@con "1", @con "2"])) 
+          (combp (varp "x" (@fun [@num, @con "1"])) 
+            (constp "0" @num))))
+      (elab (absp (varp "x" (uty "t"))
+        (combp (varp "y" (uty "t"))
+          (combp (varp "x" (uty "t")) (@var "0")))))
+  , section "elab w/ coercions"
+  , ok-eq
+      (absp (varp "x" (@fun [@real, @bool])) 
+        (combp (varp "y" (@fun [@bool, @con "1"])) 
+          (combp (varp "x" (@fun [@real, @bool])) 
+            (combp
+              (constp "real_of_num" (@fun [@num, @real])) 
+              (constp "0" @num)))))
+      (elab
+        (absp (typing (varp "x" (uty "t")) (@fun [@real, @bool]))
+          (combp (varp "y" (uty "t"))
+            (combp (varp "x" (uty "t")) (@var "0")))))
+  ],
+  small_env SmallEnv,
+  SmallEnv => run-tests
+  [ section "elab2"
+  , ok-eq
+      (absp (varp "x" (@fun [ptycon "complex" [], @bool])) 
+        (combp (varp "x" (@fun [ptycon "complex" [], @bool])) 
+          (combp
+            (constp "complex_of_real" (@fun [@real, ptycon "complex" []]))
+            (combp
+              (constp "real_of_num" (@fun [@num, @real])) 
+              (constp "0" @num)))))
+      (elab
+        (absp (typing (varp "x" (uty "t")) (@fun [@con "complex", @bool]))
+          (combp (varp "x" (uty "t")) (@var "0"))))
+  ].

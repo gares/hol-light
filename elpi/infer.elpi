@@ -9,10 +9,12 @@
 %% ----------------------------------------------------------------------------
 
 % Types.
-macro @dty :- ptycon "" [].
-macro @bool :- ptycon "bool" [].
 macro @con A :- ptycon A [].
-macro @fun A B :- ptycon "fun" [A, B].
+macro @bool  :- @con  "bool".
+macro @num   :- @con  "num".
+macro @ind   :- @con  "ind".
+macro @dty   :- ptycon  "" [].
+macro @fun A B :- ptycon  "fun" [A, B].
 macro @fun2 A B C :- @fun A (@fun B C).
 
 % Terms.
@@ -65,7 +67,7 @@ infer (combp F X) (combp F1 X1) B K :-
 
 infer (absp (varp S _) X) (absp (varp S A) X1) (@fun A B) K :-
     !,
-    ((vinfer S X A :- !) => infer X X1 B true),
+    ((vinfer S (varp S A) A :- !) => infer X X1 B true),
     K.
 
 % % Generalized abstractions.
@@ -92,10 +94,9 @@ infer (typing X A) X1 A K :- infer X X1 A K.
 
 pred vinfer i:string, o:preterm, o:pretype.
 vinfer S X A :-
-    overload S S1 C,
-    refresh-cpretype C A, cinfer S1 X A
-    ;
-    not (overload S _ _), cinfer S X A.
+  overload S S1 C, refresh-cpretype C A, cinfer S1 X A
+  ;
+  not (overload S _ _), cinfer S X A.
 
 %%% Constants.
 
@@ -107,13 +108,9 @@ cinfer S (varp S A) A.
 %% Further macros.
 %% ----------------------------------------------------------------------------
 
-%% Constant types.
-macro @num :- ptycon "num" [].
-macro @ind :- ptycon "ind" [].
-
 %% Type variables.
-macro @aty :- uty "A".
-macro @bty :- uty "B".
+macro @aty :- uty  "A".
+macro @bty :- uty  "B".
 
 % Term variables.
 macro @a :- varp "a" @dty.
@@ -129,8 +126,11 @@ macro @h :- varp "h" @dty.
 macro @i S :- varp S @dty.
 
 % Binary operators.
-macro @eq X Y :- combp (combp (@i "eq") X) Y.
+macro @eqvar X Y :- combp (combp (@i "eq") X) Y.
 macro @pr X Y :- combp (combp (@i "pr") X) Y.
+
+macro @eq A X Y :- @binop (constp "eq" (@fun2 A A @bool)) X Y.
+macro @id A X :- combp (constp "id" (@fun A A)) X.
 
 %% ----------------------------------------------------------------------------
 %% Extend testing framework.
@@ -140,12 +140,22 @@ shorten test.{ test, run-tests, run-test, success, failure,
                ok, ko, okb, kob, ok-eq, section }.
 shorten verbosity.{ quiet, terse, info, verbose, debug, with-verbosity }.
 
-type ok-elaborate preterm -> test.
+type ok-elaborate preterm -> preterm -> test.
 type ko-elaborate preterm -> test.
 
-run-test (ok-elaborate X) (success "") :- sigma Y \ elaborate X Y, !.
-run-test (ok-elaborate _) (failure "Should success").
-run-test (ko-elaborate X) (failure "Should fail") :- elaborate X _, !.
+run-test (ok-elaborate X Y) Ret :-
+  elaborate X Z, !,
+  if (same_term Y Z)
+     ( Ret = success "" )
+     (
+       Ret = failure Msg,
+       Msg is "Success with wrong return vaule.\nExpected: " ^
+              {term_to_string Y} ^ "\nReturned: " ^ {term_to_string Z}
+     ).
+run-test (ok-elaborate _ Y) (failure Msg) :-
+  Msg is "Call failed.  Expected: " ^ {term_to_string Y}.
+run-test (ko-elaborate X) (failure Msg) :- elaborate X Y, !,
+  Msg is "Should fail.\nReturned: " ^ {term_to_string Y}.
 run-test (ko-elaborate _) (success "").
 
 %% ----------------------------------------------------------------------------
@@ -158,8 +168,8 @@ status
   , env "b" "b" (ptybody @bool)
   , env "f" "f" (ptybody (@fun @num @num))
   , env "g" "g" (ptybody (@fun2 @num @bool @num))
-  , env "id" "id" (ptyfree (uty "A") A \ ptybody (@fun A A))
-  , env "eq" "eq" (ptyfree (uty "A") A \ ptybody (@fun2 A A @bool))
+  , env "id" "id" (ptyfree @aty A \ ptybody (@fun A A))
+  , env "eq" "eq" (ptyfree @aty A \ ptybody (@fun2 A A @bool))
   , overload "z" "u" (ptybody (@fun @num @ind))
   , overload "z" "v" (ptybody (@fun @bool @ind))
   ].
@@ -167,20 +177,30 @@ status
 pred infer_test.
 infer_test :- status PP, PP => run-tests
   [ section "Elaborate"
-  , ok-elaborate @a
-  , ok-elaborate @x
+  , ok-elaborate @a (constp "a" @num)
+  , ok-elaborate (typing @x @bty) (varp "x" @bty)
   , ok-elaborate (combp @f @a)
-  , ok-elaborate (combp @h @a)
+      (combp (constp "f" (@fun @num @num)) (constp "a" @num))
+  , ok-elaborate (typing (combp @h @a) @bool)
+      (combp (varp "h" (@fun @num @bool)) (constp "a" @num))
   , ok-elaborate (combp @z @a)
+      (combp (varp "u" (@fun @num @ind)) (constp "a" @num))
   , ok-elaborate (combp @z @b)
+      (combp (varp "v" (@fun @bool @ind)) (constp "b" @bool))
   , ko-elaborate (combp @f @b)
   , ko-elaborate (combp @a @b)
   , ok-elaborate (combp @g @a)
+      (combp (constp "g" (@fun2 @num @bool @num)) (constp "a" @num))
   , ko-elaborate (combp @g @b)
-  , ok-elaborate (combp (@i "id") @a)
-  , ok-elaborate (combp (@i "id") @b)
-  , ok-elaborate (combp (@i "id") @x)
-  , ok-elaborate (@eq @a @x)
-  , ok-elaborate (absp @x @x)
-  , ok-elaborate (@eq (@i "id") (absp @x @a))
+  , ok-elaborate (combp (@i "id") @a) (@id @num (constp "a" @num))
+  , ok-elaborate (combp (@i "id") @b) (@id @bool (constp "b" @bool))
+  , ok-elaborate (combp (@i "id") (typing @x @aty))
+      (@id @aty (varp "x" @aty))
+  , ok-elaborate (@eqvar @a @x) (@eq @num (constp "a" @num) (varp "x" @num))
+  , ok-elaborate (typing (absp @x @x) (@fun @aty @aty))
+      (absp (varp "x" @aty) (varp "x" @aty))
+  , ok-elaborate (@eqvar (@i "id") (absp @x @a))
+      (@eq (@fun @num @num)
+           (constp "id" (@fun @num @num))
+           (absp (varp "x" (@num)) (constp "a" (@num))))
   ].

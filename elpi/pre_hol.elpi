@@ -144,6 +144,8 @@ macro @bool :- ptycon "bool" [].
 macro @con A :- ptycon A [].
 macro @fun A B :- ptycon "fun" [A, B].
 macro @fun2 A B C :- @fun A (@fun B C).
+macro @aty :- uty "A".
+macro @bty :- uty "B".
 
 % Terms.
 macro @binop Op X Y :- combp (combp Op X) Y.
@@ -245,19 +247,13 @@ free-vars (absp (typing (varp _ _ as V) _) T) L L1 :-
 %% ----------------------------------------------------------------------------
 
 pred frees i:preterm, o:list preterm.
-frees X Vs :- frees.rec X [] Vs.
-
-pred frees.rec i:preterm, i:list preterm, o:list preterm.
-frees.rec V L L :- std.mem! L V, !.
-frees.rec (varp _ _ as V) L [V|L].
-frees.rec (constp _ _) L L.
-frees.rec (combp X Y) L L1 :-
-    frees.rec X L Xvars,
-    frees.rec Y Xvars L1.
-frees.rec (absp X Y) L L1 :-
-    frees.rec X L Xvars,
-    frees.rec Y L Yvars,
-    subtract Yvars Xvars L1.
+frees (varp _ _ as V) [V].
+frees (constp _ _) [].
+frees (combp X Y) Vs :- union {frees X} {frees Y} Vs.
+frees (absp X Y) Vs :-
+  frees X Us,
+  (frees V [] :- std.mem! Us V, !) => frees Y Vs.
+frees (typing X _) Vs :- frees X Vs.
 
 pred union i:list A, i:list A, o:list A.
 union [] Ys Ys.
@@ -320,9 +316,19 @@ pre_hol_tests :- run-tests
 , ok-eq [varp "y" (ptycon "" [])]
         (free-vars (absp (varp "x" (ptycon "" []))
                       (varp "y" (ptycon "" []))) [])
+, section "frees"
+, ok-eq [varp "x" @aty, varp "y" @bty]
+    (frees (combp (varp "x" @aty) (varp "y" @bty)))
+, ok-eq [varp "x" @aty, varp "x" @bty]
+    (frees (combp (varp "x" @aty) (varp "x" @bty)))
+, ok-eq [varp "x" @aty]
+    (frees (combp (varp "x" @aty) (varp "x" @aty)))
+, ok-eq [varp "y" @aty]
+    (frees (absp (varp "x" @aty) (combp (varp "x" @aty) (varp "y" @aty))))
 , ok-eq [varp "y" (uty "A")]
-        (frees (absp (varp "x" (uty "A"))
-          (combp (varp "x" (uty "A")) (varp "y" (uty "A")))))
+    (frees (absp (varp "x" (uty "A"))
+      (combp (varp "x" (uty "A")) (varp "y" (uty "A")))))
+, section "has_type"
 , ok (has_type (varp "x" (uty "A")) (uty "A"))
 , ok (has_type (constp "y" (uty "U")) (uty "U"))
 , ok (has_type (combp (constp "f" (ptycon "fun" [uty "A", uty "B"]))

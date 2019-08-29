@@ -39,6 +39,8 @@ pred coercions o:list coercion. % DB
 %% main
 %% ----------------------------------------------------------------------------
 
+shorten verbosity.{ quiet, terse, info, verbose, debug, when-verbosity }.
+
 elab T R :-
   % we assume a SINGLE type for each free variable
   free-vars T [] VS, std.map VS build-clause-fv VST, (VST =>
@@ -50,7 +52,7 @@ elab T R :-
     (of T TY R)
    )
   ),
-  print VS "|-" T "\n-e->\n" R ":" TY.
+  when-verbosity debug (print VS "|-" T "\n-e->\n" R ":" TY).
 
 pred build-clause-fv i:preterm, o:prop.
 

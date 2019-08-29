@@ -11,11 +11,11 @@ same_term X X.
 %% Load elpi files.
 %% ----------------------------------------------------------------------------
 
+accumulate verbosity.
 accumulate test.
 accumulate pre_hol.
 accumulate elab.
 accumulate infer.
-accumulate verbosity.
 
 %% ----------------------------------------------------------------------------
 %% Run tests.

@@ -140,15 +140,12 @@ ptmvars (lamp V_ B) Vs Ws :-
 
 % Types.
 macro @dty :- ptycon "" [].
-macro @bool :- ptycon "bool" [].
-macro @con A :- ptycon A [].
-macro @fun A B :- ptycon "fun" [A, B].
-macro @fun2 A B C :- @fun A (@fun B C).
-macro @aty :- uty "A".
-macro @bty :- uty "B".
-
-% Terms.
-macro @binop Op X Y :- combp (combp Op X) Y.
+macro @tybool :- ptycon "bool" [].
+macro @tycon A :- ptycon A [].
+macro @tyfun A B :- ptycon "fun" [A, B].
+macro @tyfun2 A B C :- @tyfun A (@tyfun B C).
+macro @aaty :- uty "A".
+macro @bbty :- uty "B".
 
 %% ----------------------------------------------------------------------------
 %% Turning nominal abstractions into bound HOAS abstractions and recognizes
@@ -277,8 +274,8 @@ list_pmk_forall [V|Vs] X (absp V X1) :- list_pmk_forall Vs X X1.
 pred has_type i:preterm, o:pretype.
 has_type (varp _ A) A.
 has_type (constp _ A) A.
-has_type (combp X Y) B :- has_type X (@fun A B), has_type Y A.
-has_type (absp (varp _ A) X) (@fun A B) :- has_type X B.
+has_type (combp X Y) B :- has_type X (@tyfun A B), has_type Y A.
+has_type (absp (varp _ A) X) (@tyfun A B) :- has_type X B.
 has_type (typing X A) A :- has_type X A.
 
 %%% ---------------------------------------------------------------------------
@@ -317,14 +314,14 @@ pre_hol_tests :- run-tests
         (free-vars (absp (varp "x" (ptycon "" []))
                       (varp "y" (ptycon "" []))) [])
 , section "frees"
-, ok-eq [varp "x" @aty, varp "y" @bty]
-    (frees (combp (varp "x" @aty) (varp "y" @bty)))
-, ok-eq [varp "x" @aty, varp "x" @bty]
-    (frees (combp (varp "x" @aty) (varp "x" @bty)))
-, ok-eq [varp "x" @aty]
-    (frees (combp (varp "x" @aty) (varp "x" @aty)))
-, ok-eq [varp "y" @aty]
-    (frees (absp (varp "x" @aty) (combp (varp "x" @aty) (varp "y" @aty))))
+, ok-eq [varp "x" @aaty, varp "y" @bbty]
+    (frees (combp (varp "x" @aaty) (varp "y" @bbty)))
+, ok-eq [varp "x" @aaty, varp "x" @bbty]
+    (frees (combp (varp "x" @aaty) (varp "x" @bbty)))
+, ok-eq [varp "x" @aaty]
+    (frees (combp (varp "x" @aaty) (varp "x" @aaty)))
+, ok-eq [varp "y" @aaty]
+    (frees (absp (varp "x" @aaty) (combp (varp "x" @aaty) (varp "y" @aaty))))
 , ok-eq [varp "y" (uty "A")]
     (frees (absp (varp "x" (uty "A"))
       (combp (varp "x" (uty "A")) (varp "y" (uty "A")))))

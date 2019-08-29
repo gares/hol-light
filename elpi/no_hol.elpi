@@ -23,7 +23,12 @@ accumulate infer.
 
 shorten verbosity.{ quiet, terse, info, verbose, debug, with-verbosity }.
 
+% Bogus definition for predicate numeral.
+numeral "0"
+  (combp (constp "NUMERAL" (ptycon "fun" [ptycon "num" [], ptycon "num" []]))
+    (constp "_0" (ptycon "num" []))).
+
 main :-
-    with-verbosity terse pre_hol_tests,
-    with-verbosity terse elab_tests,
-    with-verbosity terse infer_test.
+  with-verbosity terse pre_hol_tests,
+  with-verbosity terse elab_tests,
+  with-verbosity terse infer_test.

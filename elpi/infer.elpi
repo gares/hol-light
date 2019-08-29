@@ -9,16 +9,16 @@
 %% ----------------------------------------------------------------------------
 
 % Types.
-macro @con A :- ptycon A [].
-macro @bool  :- @con  "bool".
-macro @num   :- @con  "num".
-macro @ind   :- @con  "ind".
-macro @dty   :- ptycon  "" [].
-macro @fun A B :- ptycon  "fun" [A, B].
-macro @fun2 A B C :- @fun A (@fun B C).
+macro @tcon A :- ptycon A [].
+macro @tbool  :- @tcon  "bool".
+macro @tnum   :- @tcon  "num".
+macro @tind   :- @tcon  "ind".
+macro @tdty   :- ptycon  "" [].
+macro @tfun A B :- ptycon  "fun" [A, B].
+macro @tfun2 A B C :- @tfun A (@tfun B C).
 
 % Terms.
-macro @binop Op X Y :- combp (combp Op X) Y.
+macro @tbinop Op X Y :- combp (combp Op X) Y.
 
 %% ----------------------------------------------------------------------------
 %% Entrypoint.
@@ -61,22 +61,22 @@ infer (varp S _) X A K :-
 %%% Combinations.
 
 infer (combp F X) (combp F1 X1) B K :-
-  infer F F1 (@fun A B) (infer X X1 A K).
+  infer F F1 (@tfun A B) (infer X X1 A K).
 
 %%% Abstractions.
 
-infer (absp (varp S _) X) (absp (varp S A) X1) (@fun A B) K :-
-    !,
-    ((vinfer S (varp S A) A :- !) => infer X X1 B true),
-    K.
+infer (absp (varp S _) X) (absp (varp S A) X1) (@tfun A B) K :-
+  !,
+  ((vinfer S (varp S A) A :- !) => infer X X1 B true),
+  K.
 
 % % Generalized abstractions.
 % infer (absp X Y) (combp GABS GFUN) FunTy K :-
-%     FunTy = @fun A B,
-%     GABS = constp "GABS" (@fun (@fun FunTy @bool) FunTy),
+%     FunTy = @tfun A B,
+%     GABS = constp "GABS" (@tfun (@tfun FunTy @tbool) FunTy),
 %     GFUN = absp FVAR Body,
 %     FVAR = varp "f" FunTy,
-%     GEQ = @binop (constp "GEQ" (@fun2 B B @bool))
+%     GEQ = @tbinop (constp "GEQ" (@tfun2 B B @tbool))
 %                  (combp FVAR X1)
 %                  Y1,
 %     infer X X1 A
@@ -113,24 +113,24 @@ macro @aty :- uty  "A".
 macro @bty :- uty  "B".
 
 % Term variables.
-macro @a :- varp "a" @dty.
-macro @b :- varp "b" @dty.
-macro @x :- varp "x" @dty.
-macro @y :- varp "y" @dty.
-macro @z :- varp "z" @dty.
-macro @f :- varp "f" @dty.
-macro @g :- varp "g" @dty.
-macro @h :- varp "h" @dty.
+macro @a :- varp "a" @tdty.
+macro @b :- varp "b" @tdty.
+macro @x :- varp "x" @tdty.
+macro @y :- varp "y" @tdty.
+macro @z :- varp "z" @tdty.
+macro @f :- varp "f" @tdty.
+macro @g :- varp "g" @tdty.
+macro @h :- varp "h" @tdty.
 
 % Simple terms.
-macro @i S :- varp S @dty.
+macro @i S :- varp S @tdty.
 
 % Binary operators.
 macro @eqvar X Y :- combp (combp (@i "eq") X) Y.
 macro @pr X Y :- combp (combp (@i "pr") X) Y.
 
-macro @eq A X Y :- @binop (constp "eq" (@fun2 A A @bool)) X Y.
-macro @id A X :- combp (constp "id" (@fun A A)) X.
+macro @eq A X Y :- @tbinop (constp "eq" (@tfun2 A A @tbool)) X Y.
+macro @id A X :- combp (constp "id" (@tfun A A)) X.
 
 %% ----------------------------------------------------------------------------
 %% Extend testing framework.
@@ -164,43 +164,43 @@ run-test (ko-elaborate _) (success "").
 
 pred status o:list prop.
 status
-  [ env "a" "a" (ptybody @num)
-  , env "b" "b" (ptybody @bool)
-  , env "f" "f" (ptybody (@fun @num @num))
-  , env "g" "g" (ptybody (@fun2 @num @bool @num))
-  , env "id" "id" (ptyfree @aty A \ ptybody (@fun A A))
-  , env "eq" "eq" (ptyfree @aty A \ ptybody (@fun2 A A @bool))
-  , overload "z" "u" (ptybody (@fun @num @ind))
-  , overload "z" "v" (ptybody (@fun @bool @ind))
+  [ env "a" "a" (ptybody @tnum)
+  , env "b" "b" (ptybody @tbool)
+  , env "f" "f" (ptybody (@tfun @tnum @tnum))
+  , env "g" "g" (ptybody (@tfun2 @tnum @tbool @tnum))
+  , env "id" "id" (ptyfree @aty A \ ptybody (@tfun A A))
+  , env "eq" "eq" (ptyfree @aty A \ ptybody (@tfun2 A A @tbool))
+  , overload "z" "u" (ptybody (@tfun @tnum @tind))
+  , overload "z" "v" (ptybody (@tfun @tbool @tind))
   ].
 
 pred infer_test.
 infer_test :- status PP, PP => run-tests
   [ section "Elaborate"
-  , ok-elaborate @a (constp "a" @num)
+  , ok-elaborate @a (constp "a" @tnum)
   , ok-elaborate (typing @x @bty) (varp "x" @bty)
   , ok-elaborate (combp @f @a)
-      (combp (constp "f" (@fun @num @num)) (constp "a" @num))
-  , ok-elaborate (typing (combp @h @a) @bool)
-      (combp (varp "h" (@fun @num @bool)) (constp "a" @num))
+      (combp (constp "f" (@tfun @tnum @tnum)) (constp "a" @tnum))
+  , ok-elaborate (typing (combp @h @a) @tbool)
+      (combp (varp "h" (@tfun @tnum @tbool)) (constp "a" @tnum))
   , ok-elaborate (combp @z @a)
-      (combp (varp "u" (@fun @num @ind)) (constp "a" @num))
+      (combp (varp "u" (@tfun @tnum @tind)) (constp "a" @tnum))
   , ok-elaborate (combp @z @b)
-      (combp (varp "v" (@fun @bool @ind)) (constp "b" @bool))
+      (combp (varp "v" (@tfun @tbool @tind)) (constp "b" @tbool))
   , ko-elaborate (combp @f @b)
   , ko-elaborate (combp @a @b)
   , ok-elaborate (combp @g @a)
-      (combp (constp "g" (@fun2 @num @bool @num)) (constp "a" @num))
+      (combp (constp "g" (@tfun2 @tnum @tbool @tnum)) (constp "a" @tnum))
   , ko-elaborate (combp @g @b)
-  , ok-elaborate (combp (@i "id") @a) (@id @num (constp "a" @num))
-  , ok-elaborate (combp (@i "id") @b) (@id @bool (constp "b" @bool))
+  , ok-elaborate (combp (@i "id") @a) (@id @tnum (constp "a" @tnum))
+  , ok-elaborate (combp (@i "id") @b) (@id @tbool (constp "b" @tbool))
   , ok-elaborate (combp (@i "id") (typing @x @aty))
       (@id @aty (varp "x" @aty))
-  , ok-elaborate (@eqvar @a @x) (@eq @num (constp "a" @num) (varp "x" @num))
-  , ok-elaborate (typing (absp @x @x) (@fun @aty @aty))
+  , ok-elaborate (@eqvar @a @x) (@eq @tnum (constp "a" @tnum) (varp "x" @tnum))
+  , ok-elaborate (typing (absp @x @x) (@tfun @aty @aty))
       (absp (varp "x" @aty) (varp "x" @aty))
   , ok-elaborate (@eqvar (@i "id") (absp @x @a))
-      (@eq (@fun @num @num)
-           (constp "id" (@fun @num @num))
-           (absp (varp "x" (@num)) (constp "a" (@num))))
+      (@eq (@tfun @tnum @tnum)
+           (constp "id" (@tfun @tnum @tnum))
+           (absp (varp "x" (@tnum)) (constp "a" (@tnum))))
   ].

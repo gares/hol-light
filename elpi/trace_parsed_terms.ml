@@ -150,24 +150,6 @@ let term_constants =
     consts (rator tm) @ consts (rand tm) in
   fun tm -> setify (consts tm);;
 
-(* Quick hack to compare terms upto renaming in type variables. *)
-let term_eq tm1 tm2 =
-  let (e,vinst,tinst) = term_match [] tm1 tm2 in
-  e = [] &&
-  forall (is_var o fst) vinst &&
-  forall (is_vartype o fst) tinst;;
-
-(* Variant of the above. *)
-(*
-let rec term_eq tm1 tm2 =
-  match tm1,tm2 with
-    Var(s1,_), Var(s2,_)
-  | Const(s1,_), Const(s2,_) -> s1 = s2
-  | Comb(f1,x1), Comb(f2,x2) -> term_eq f1 f2 && term_eq x1 x2
-  | Abs(Var(s1,_),b1), Abs(Var(s2,_),b2) -> s1 = s2 && term_eq b1 b2
-  | _ -> false;;
-*)
-
 let contains_gabs tm =
   exists (fun c -> name_of c = "GABS") (term_constants tm);;
 

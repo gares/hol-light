@@ -157,7 +157,7 @@ end = struct
 
 (* --------------------------------------------------------------------- *)
 
- module Hol_preterm : sig
+  module Hol_preterm : sig
 
     val t : preterm Conversion.t
     val elpi_string_of_preterm : preterm -> string
@@ -203,58 +203,59 @@ end = struct
 
   module Cprover = struct
 
-let t_poly (individual : 'i Conversion.t) (formula : 'f Conversion.t) : (('i,'f) proof Conversion.t)=
-  AlgebraicData.declare {
-      ty = TyApp ("prover.proof",individual.Conversion.ty,[formula.Conversion.ty]);
-      doc = "The algebraic data type of first order proofs";
-      pp = (fun fmt t -> Format.fprintf fmt "%s" "TODO");
-      constructors = [
-        K("prover.and_l","",A(formula,A(formula,S N)),
-          B(fun a b x -> Pand_l (a,b,x)),
-          M(fun ~ok ~ko -> function Pand_l(a,b,x) -> ok a b x | _ -> ko ()));
-        K("prover.and_r","",S (S N),
-          B(fun x y -> Pand_r(x,y)),
-          M(fun ~ok ~ko -> function Pand_r(x,y) -> ok x y | _ -> ko ()));
-        K("prover.or_l","",A(formula,A(formula,S(S N))),
-          B(fun t1 t2 p1 p2 -> Por_l(t1,t2,p1,p2)),
-          M(fun ~ok ~ko -> function Por_l(t1,t2,p1,p2) -> ok t1 t2 p1 p2 | _ -> ko ()));
-        K("prover.or1_r","",S N,
-          B(fun p -> Por1_r(p)),
-          M(fun ~ok ~ko -> function Por1_r(p) -> ok p | _ -> ko ()));
-        K("prover.or2_r","",S N,
-          B(fun p -> Por2_r(p)),
-          M(fun ~ok ~ko -> function Por2_r(p) -> ok p | _ -> ko ()));
-        K("prover.orc_r","",S N,
-          B(fun x -> Porc_r x),
-          M(fun ~ok ~ko -> function Porc_r x -> ok x | _ -> ko ()));
-        K("prover.ex-falso","",N,
-          B(Pex_falso),
-          M(fun ~ok ~ko -> function Pex_falso -> ok | _ -> ko ()));
-        K("prover.initial","",A(formula,N),
-          B(fun x -> Pinitial x),
-          M(fun ~ok ~ko -> function Pinitial x -> ok x | _ -> ko ()));
-        K("prover.imp_l","",A(formula,A(formula,S (S N))),
-          B(fun t1 t2 p1 p2 -> Pimp_l(t1,t2,p1,p2)),
-          M(fun ~ok ~ko -> function Pimp_l(t1,t2,p1,p2) -> ok t1 t2 p1 p2 | _ -> ko ()));
-        K("prover.imp_r","",S N,
-          B(fun p -> Pimp_r(p)),
-          M(fun ~ok ~ko -> function Pimp_r(p) -> ok p | _ -> ko ()));
-        K("prover.forall_l","",A(individual,A(formula,S N)),
-          B(fun t1 t2 p -> Pforall_l(t1,t2,p)),
-          M(fun ~ok ~ko -> function Pforall_l(t1,t2,p) -> ok t1 t2 p | _ -> ko ()));
-        K("prover.nforall_r","",A(individual,A(formula,S N)),
-          B(fun t1 t2 p -> Pforall_r(t1,t2,p)),
-          M(fun ~ok ~ko -> function Pforall_r(t1,t2,p) -> ok t1 t2 p | _ -> ko ()));
-        K("prover.nexists_l","",A(individual,A(formula,S N)),
-          B(fun t1 t2 p -> Pexists_l(t1,t2,p)),
-          M(fun ~ok ~ko -> function Pexists_l(t1,t2,p) -> ok t1 t2 p | _ -> ko ()));
-        K("prover.exists_r","",A(individual,S N),
-          B(fun t p -> Pexists_r(t,p)),
-          M(fun ~ok ~ko -> function Pexists_r(t,p) -> ok t p | _ -> ko ()));
-      ]
-}
+    let t_poly (individual : 'i Conversion.t) (formula : 'f Conversion.t)
+        : ('i,'f) proof Conversion.t =
+      AlgebraicData.declare {
+        ty = TyApp ("prover.proof",individual.Conversion.ty,[formula.Conversion.ty]);
+        doc = "The algebraic data type of first order proofs";
+        pp = (fun fmt t -> Format.fprintf fmt "%s" "TODO");
+        constructors = [
+          K("prover.and_l","",A(formula,A(formula,S N)),
+            B(fun a b x -> Pand_l (a,b,x)),
+            M(fun ~ok ~ko -> function Pand_l(a,b,x) -> ok a b x | _ -> ko ()));
+          K("prover.and_r","",S (S N),
+            B(fun x y -> Pand_r(x,y)),
+            M(fun ~ok ~ko -> function Pand_r(x,y) -> ok x y | _ -> ko ()));
+          K("prover.or_l","",A(formula,A(formula,S(S N))),
+            B(fun t1 t2 p1 p2 -> Por_l(t1,t2,p1,p2)),
+            M(fun ~ok ~ko -> function Por_l(t1,t2,p1,p2) -> ok t1 t2 p1 p2 | _ -> ko ()));
+          K("prover.or1_r","",S N,
+            B(fun p -> Por1_r(p)),
+            M(fun ~ok ~ko -> function Por1_r(p) -> ok p | _ -> ko ()));
+          K("prover.or2_r","",S N,
+            B(fun p -> Por2_r(p)),
+            M(fun ~ok ~ko -> function Por2_r(p) -> ok p | _ -> ko ()));
+          K("prover.orc_r","",S N,
+            B(fun x -> Porc_r x),
+            M(fun ~ok ~ko -> function Porc_r x -> ok x | _ -> ko ()));
+          K("prover.ex-falso","",N,
+            B(Pex_falso),
+            M(fun ~ok ~ko -> function Pex_falso -> ok | _ -> ko ()));
+          K("prover.initial","",A(formula,N),
+            B(fun x -> Pinitial x),
+            M(fun ~ok ~ko -> function Pinitial x -> ok x | _ -> ko ()));
+          K("prover.imp_l","",A(formula,A(formula,S (S N))),
+            B(fun t1 t2 p1 p2 -> Pimp_l(t1,t2,p1,p2)),
+            M(fun ~ok ~ko -> function Pimp_l(t1,t2,p1,p2) -> ok t1 t2 p1 p2 | _ -> ko ()));
+          K("prover.imp_r","",S N,
+            B(fun p -> Pimp_r(p)),
+            M(fun ~ok ~ko -> function Pimp_r(p) -> ok p | _ -> ko ()));
+          K("prover.forall_l","",A(individual,A(formula,S N)),
+            B(fun t1 t2 p -> Pforall_l(t1,t2,p)),
+            M(fun ~ok ~ko -> function Pforall_l(t1,t2,p) -> ok t1 t2 p | _ -> ko ()));
+          K("prover.nforall_r","",A(individual,A(formula,S N)),
+            B(fun t1 t2 p -> Pforall_r(t1,t2,p)),
+            M(fun ~ok ~ko -> function Pforall_r(t1,t2,p) -> ok t1 t2 p | _ -> ko ()));
+          K("prover.nexists_l","",A(individual,A(formula,S N)),
+            B(fun t1 t2 p -> Pexists_l(t1,t2,p)),
+            M(fun ~ok ~ko -> function Pexists_l(t1,t2,p) -> ok t1 t2 p | _ -> ko ()));
+          K("prover.exists_r","",A(individual,S N),
+            B(fun t p -> Pexists_r(t,p)),
+            M(fun ~ok ~ko -> function Pexists_r(t,p) -> ok t p | _ -> ko ()));
+        ]
+      }
 
-  let t = t_poly Hol_preterm.t Hol_preterm.t
+    let t = t_poly Hol_preterm.t Hol_preterm.t
 
   end
   
@@ -286,55 +287,53 @@ let t_poly (individual : 'i Conversion.t) (formula : 'f Conversion.t) : (('i,'f)
 
 (* ======================= abstract data types ====================== *)
 
-module Thm = struct
-  (* Proof evidence, Elpi program can only pass this around *)
-  let t = OpaqueData.declare {
-    name = "thm";
-    doc = "The opaque witness of a theorem";
-    pp = (fun f t -> Format.fprintf f "<<proof-of %a >>" pp_print_thm t);
-    eq = equals_thm;
-    hash = Hashtbl.hash;
-    hconsed = false;
-    constants = [];
-  }
+  module Thm = struct
+    (* Proof evidence, Elpi program can only pass this around *)
+    let t = OpaqueData.declare {
+      name = "thm";
+      doc = "The opaque witness of a theorem";
+      pp = (fun f t -> Format.fprintf f "<<proof-of %a >>" pp_print_thm t);
+      eq = equals_thm;
+      hash = Hashtbl.hash;
+      hconsed = false;
+      constants = [];
+    }
+  end
 
-end
+  module Tactics = struct
 
-module Tactics = struct
+    type hyp = Hyp of string * preterm * thm
+    type goal = Goal of hyp list * preterm
+    type just = Just of (thm list -> thm)
+    type justification =
+      | JML of just
+      | JApp of justification * justification
+      | JProved of thm
+      | JStop
 
-type hyp = Hyp of string * preterm * thm
-type goal = Goal of hyp list * preterm
-type just = Just of (thm list -> thm)
-type justification =
-  | JML of just
-  | JApp of justification * justification
-  | JProved of thm
-  | JStop
+    let hyp = AlgebraicData.declare {
+      AlgebraicData.ty = TyName "hyp";
+      doc = "HOL-light hypothesis";
+      pp = (fun fmt h -> Format.fprintf fmt "TODO:hyp");
+      constructors = [
+        K("hyp","",A(BuiltInData.string, A(Hol_preterm.t, A(Thm.t,N))),
+          B (fun s t p -> Hyp(s,t,p)),
+          M (fun ~ok ~ko:_ -> function Hyp(s,t,p) -> ok s t p));
+      ]
+    }
 
-let hyp = AlgebraicData.declare {
-  AlgebraicData.ty = TyName "hyp";
-  doc = "HOL-light hypothesis";
-  pp = (fun fmt h -> Format.fprintf fmt "TODO:hyp");
-  constructors = [
+    let goal = AlgebraicData.declare {
+      ty = TyName "goal";
+      doc = "HOL-light goal";
+      pp = (fun fmt h -> Format.fprintf fmt "TODO:goal");
+      constructors = [
+        K("goal","",A(BuiltInData.list hyp,A(Hol_preterm.t,N)),
+          B (fun h c -> Goal(h,c)),
+          M (fun ~ok ~ko:_ -> function Goal(h,c) -> ok h c));
+      ]
+    }
 
-    K("hyp","",A(BuiltInData.string, A(Hol_preterm.t, A(Thm.t,N))),
-      B (fun s t p -> Hyp(s,t,p)),
-      M (fun ~ok ~ko:_ -> function Hyp(s,t,p) -> ok s t p));
-  ]
-}
-
-let goal = AlgebraicData.declare {
-  ty = TyName "goal";
-  doc = "HOL-light goal";
-  pp = (fun fmt h -> Format.fprintf fmt "TODO:goal");
-  constructors = [
-    K("goal","",A(BuiltInData.list hyp,A(Hol_preterm.t,N)),
-      B (fun h c -> Goal(h,c)),
-      M (fun ~ok ~ko:_ -> function Goal(h,c) -> ok h c));
-  ]
-}
-
-let just = OpaqueData.declare {
+    let just = OpaqueData.declare {
       name = "just";
       doc = "A proof step implemented in ML";
       pp = (fun fmt _ -> Format.fprintf fmt "<justification>");
@@ -342,172 +341,172 @@ let just = OpaqueData.declare {
       hash = (fun t -> Hashtbl.hash t);
       hconsed = false;
       constants = [];
- }
+    }
 
-let justification = AlgebraicData.declare {
-  ty = TyName "justification";
-  doc = "Elpi tactic justification";
-  pp = (fun fmt h -> Format.fprintf fmt "TODO:justification");
-  constructors = [
-    K("jml","",A(just,N),
-      B (fun f -> JML f),
-      M (fun ~ok ~ko -> function JML f -> ok f | _ -> ko ()));
-    K("japp","",S(S N),
-      B (fun f j -> JApp(f,j)),
-      M (fun ~ok ~ko -> function JApp(f,j) -> ok f j | _ -> ko ()));
-    K("jproved","",A(Thm.t,N),
-      B (fun p -> JProved p),
-      M (fun ~ok ~ko -> function JProved p -> ok p | _ -> ko ()));
-    K("jstop","",N,
-      B JStop,
-      M (fun ~ok ~ko -> function JStop -> ok | _ -> ko ())); 
-  ]
-}
+    let justification = AlgebraicData.declare {
+      ty = TyName "justification";
+      doc = "Elpi tactic justification";
+      pp = (fun fmt h -> Format.fprintf fmt "TODO:justification");
+      constructors = [
+        K("jml","",A(just,N),
+          B (fun f -> JML f),
+          M (fun ~ok ~ko -> function JML f -> ok f | _ -> ko ()));
+        K("japp","",S(S N),
+          B (fun f j -> JApp(f,j)),
+          M (fun ~ok ~ko -> function JApp(f,j) -> ok f j | _ -> ko ()));
+        K("jproved","",A(Thm.t,N),
+          B (fun p -> JProved p),
+          M (fun ~ok ~ko -> function JProved p -> ok p | _ -> ko ()));
+        K("jstop","",N,
+          B JStop,
+          M (fun ~ok ~ko -> function JStop -> ok | _ -> ko ())); 
+      ]
+    }
 
-let holg2elpig (hyps,concl) =
-  let hyps = List.map (fun (s,thm) ->
-    Hyp (s,preterm_of_term (Hol.concl thm),thm)) hyps in
-  Goal(hyps,preterm_of_term concl)
+    let holg2elpig (hyps,concl) =
+      let hyps = List.map (fun (s,thm) ->
+        Hyp (s,preterm_of_term (Hol.concl thm),thm)) hyps in
+      Goal(hyps,preterm_of_term concl)
 
-let elpig2holg (Goal(hyps,g)) =
-  let hyps = List.map (fun (Hyp (s,_,thm)) -> s,thm) hyps in
-   (hyps, term_of_preterm g)
+    let elpig2holg (Goal(hyps,g)) =
+      let hyps = List.map (fun (Hyp (s,_,thm)) -> s,thm) hyps in
+       (hyps, term_of_preterm g)
 
-let rec interp_j = function
-  | JML (Just f) -> f
-  | JApp (j1,j2) -> fun l -> interp_j j1 [interp_j j2 l]
-  | JProved thm -> fun l -> assert(l = []); thm
-  | JStop -> (function [t] -> t | _ -> assert false)
+    let rec interp_j = function
+      | JML (Just f) -> f
+      | JApp (j1,j2) -> fun l -> interp_j j1 [interp_j j2 l]
+      | JProved thm -> fun l -> assert(l = []); thm
+      | JStop -> (function [t] -> t | _ -> assert false)
 
-end
-
+  end
 
   module Builtins = struct
 
-  open BuiltInPredicate;;
-  open Notation;;
-  open BuiltIn;;
+    open BuiltInPredicate;;
+    open Notation;;
+    open BuiltIn;;
 
-  let pretype_of_type2 t =
-    let t = pretype_of_type t in
-    let rec aux = function
-      | Utv s  as x ->
-         if s.[0] = '?' then Utv ("?" ^ s) else x
-      | Stv _ as x -> x
-      | Ptycon(s,tl) -> Ptycon(s,List.map aux tl) in
-    aux t
+    let pretype_of_type2 t =
+      let t = pretype_of_type t in
+      let rec aux = function
+        | Utv s  as x ->
+           if s.[0] = '?' then Utv ("?" ^ s) else x
+        | Stv _ as x -> x
+        | Ptycon(s,tl) -> Ptycon(s,List.map aux tl) in
+      aux t
 
-  let declarations = [
-    LPDoc "========================== HOL-Light ===========================";
+    let declarations = [
+      LPDoc "========================== HOL-Light ===========================";
 
-    MLData Hol_pretype.t;
-    MLData Hol_preterm.t;
+      MLData Hol_pretype.t;
+      MLData Hol_preterm.t;
 
-(*
-    MLCode (Pred("hol.thm",
-      In(string,"thm name",
-      Out(sequent,"the sequent",
-      Easy("looks up a theorem in the environment"))),
-    (fun name _ ~depth ->
-       try !: (List.assoc name !theorems)
-       with Not_found -> E.Utils.error ("thm "^name^"not found"))),
-    DocNext);
+      (*
+        MLCode (Pred("hol.thm",
+          In(string,"thm name",
+          Out(sequent,"the sequent",
+          Easy("looks up a theorem in the environment"))),
+        (fun name _ ~depth ->
+           try !: (List.assoc name !theorems)
+           with Not_found -> E.Utils.error ("thm "^name^"not found"))),
+        DocNext);
+      *)
 
-*)
+      LPDoc "-------------------- environment -----------------------------";
 
-    LPDoc "-------------------- environment -----------------------------";
+      MLCode (Pred("hol.env",
+        In(BuiltInData.string,"constant name",
+        Out(Hol_pretype.t, "constant type",
+        Easy("lookup the type of known constant"))),
+      (fun name _ ~depth:_ ->
+         try let ty = get_const_type name in
+           !: (pretype_of_type2 ty)
+         with Failure _ -> raise No_clause)),
+      DocNext);
 
-    MLCode (Pred("hol.env",
-      In(BuiltInData.string,"constant name",
-      Out(Hol_pretype.t, "constant type",
-      Easy("lookup the type of known constant"))),
-    (fun name _ ~depth:_ ->
-       try let ty = get_const_type name in
-         !: (pretype_of_type2 ty)
-       with Failure _ -> raise No_clause)),
-    DocNext);
-
-    (* TODO:
+      (* TODO:
         - export the_overloaded_skeleton (NO! serve per evitare backtracking)
         - get_var_type (poco usato, per studenti?) *)
 
 
-    MLCode (Pred("hol.interface",
-      In(BuiltInData.string,"constant overloaded name",
-      Out(BuiltInData.list (Elpi.Builtin.pair BuiltInData.string Hol_pretype.t), "constant name and type",
-      Easy("lookup the interpretations of overloaded constant"))),
-    (fun name _ ~depth ->
-       let l = mapfilter (fun (x,(s,t)) ->
-               if x = name then s, pretype_of_type2 t
-               else fail()) !the_interface in
-        !: l)),
-    DocNext);
+      MLCode (Pred("hol.interface",
+        In(BuiltInData.string,"constant overloaded name",
+        Out(BuiltInData.list (Elpi.Builtin.pair BuiltInData.string Hol_pretype.t), "constant name and type",
+        Easy("lookup the interpretations of overloaded constant"))),
+      (fun name _ ~depth ->
+         let l = mapfilter (fun (x,(s,t)) ->
+                 if x = name then s, pretype_of_type2 t
+                 else fail()) !the_interface in
+          !: l)),
+      DocNext);
 
-    MLCode (Pred("hol.pmk_numeral",
-      In(BuiltInData.string,"possibly a numeral",
-      Out(Hol_preterm.t,"the number",
-      Easy "when the given string is a numeral it outputs its preterm")),
-    (fun str _ ~depth ->
-       if can num_of_string str then !: (pmk_numeral (num_of_string str))
-       else raise No_clause)),
-    DocNext);
+      MLCode (Pred("hol.pmk_numeral",
+        In(BuiltInData.string,"possibly a numeral",
+        Out(Hol_preterm.t,"the number",
+        Easy "when the given string is a numeral it outputs its preterm")),
+      (fun str _ ~depth ->
+         if can num_of_string str then !: (pmk_numeral (num_of_string str))
+         else raise No_clause)),
+      DocNext);
 
-    MLCode (Pred("hol.coercions",
-      Out(BuiltInData.list (Elpi.Builtin.pair BuiltInData.string Hol_pretype.t), "coercions",
+      MLCode (Pred("hol.coercions",
+        Out(BuiltInData.list (Elpi.Builtin.pair BuiltInData.string Hol_pretype.t), "coercions",
         Easy("Fetches the list of coercions")),
       (fun _ ~depth ->
          !: (map (fun (s,(ty,_)) -> s, pretype_of_type2 ty) !the_coercions))),
       DocNext);
 
-    LPDoc "-------------------- printing -----------------------------";
+      LPDoc "-------------------- printing -----------------------------";
 
-    MLCode (Pred("hol.term->string",
-      In(Hol_preterm.t,"T",
-      Out(BuiltInData.string,"S",
-      Easy "typechecks T and prints it to S")),
-    (fun t _ ~depth ->
-       try
-         !: (Hol_preterm.elpi_string_of_preterm t)
-       with Failure s -> !: ("(illtyped)"^s))),
-    DocAbove);
+      MLCode (Pred("hol.term->string",
+        In(Hol_preterm.t,"T",
+        Out(BuiltInData.string,"S",
+        Easy "typechecks T and prints it to S")),
+      (fun t _ ~depth ->
+         try
+           !: (Hol_preterm.elpi_string_of_preterm t)
+         with Failure s -> !: ("(illtyped)"^s))),
+      DocAbove);
 
-    MLCode (Pred("hol.ty->string",
-      In(Hol_pretype.t,"Ty",
-      Out(BuiltInData.string,"S",
-      Easy "typechecks Ty and prints it to S")),
-    (fun t _ ~depth ->
-       try
-         !: (string_of_type (type_of_pretype t))
-       with Failure _ -> !: "(illtyped)")),
-    DocAbove);
-(*)
-    MLCode (Pred("hol.tys->string",
-      In(Hol_type_schema.t,"Tys",
-      Out(string,"S",
-      Easy "typechecks Tys and prints it to S")),
-    (fun t _ ~depth ->
-       try
-         !: (string_of_type (snd t))
-       with Failure _ -> !: "(illtyped)")),
-    DocAbove);
-*)
-    LPDoc "-------------------- kernel rules ----------------------------";
+      MLCode (Pred("hol.ty->string",
+        In(Hol_pretype.t,"Ty",
+        Out(BuiltInData.string,"S",
+        Easy "typechecks Ty and prints it to S")),
+      (fun t _ ~depth ->
+         try
+           !: (string_of_type (type_of_pretype t))
+         with Failure _ -> !: "(illtyped)")),
+      DocAbove);
 
-    MLData Thm.t;
+      (*
+      MLCode (Pred("hol.tys->string",
+        In(Hol_type_schema.t,"Tys",
+        Out(string,"S",
+        Easy "typechecks Tys and prints it to S")),
+      (fun t _ ~depth ->
+         try
+           !: (string_of_type (snd t))
+         with Failure _ -> !: "(illtyped)")),
+      DocAbove);
+      *)
 
-    MLCode (Pred("hol.rule.refl",
-      In(Hol_preterm.t,"X",
-      Out(Thm.t,"P",
-      Easy "P is a proof of X = X")),
-    (fun x _ ~depth:_ ->
-      set_jrh_lexer;
-      let rc = Hol.REFL (term_of_preterm x) in
-      unset_jrh_lexer;
-      !: rc
-      )),
-    DocAbove);
+      LPDoc "-------------------- kernel rules ----------------------------";
 
-(*
+      MLData Thm.t;
+
+      MLCode (Pred("hol.rule.refl",
+        In(Hol_preterm.t,"X",
+        Out(Thm.t,"P",
+        Easy "P is a proof of X = X")),
+      (fun x _ ~depth:_ ->
+        set_jrh_lexer;
+        let rc = Hol.REFL (term_of_preterm x) in
+        unset_jrh_lexer;
+        !: rc
+        )),
+      DocAbove);
+
+      (*
       val TRANS : thm -> thm -> thm
       val MK_COMB : thm * thm -> thm
       val ABS : term -> thm -> thm
@@ -517,37 +516,34 @@ end
       val DEDUCT_ANTISYM_RULE : thm -> thm -> thm
       val INST_TYPE : (hol_type * hol_type) list -> thm -> thm
       val INST : (term * term) list -> thm -> thm
-*)
+      *)
 
-    LPDoc "-------------------- tactics ----------------------------";
+      LPDoc "-------------------- tactics ----------------------------";
 
+      MLData Tactics.hyp;
+      MLData Tactics.goal;
+      MLData Tactics.just;
+      MLData Tactics.justification;
 
+      MLCode (Pred("hol.tac.ap_term_tac",
+        In(Tactics.goal,"G",
+        Out(BuiltInData.list Tactics.goal,"GS",
+        Out(Tactics.justification,"J",
+        Easy "congruence"))),
+      (fun g _ _ ~depth:_ ->
+        set_jrh_lexer;
+        let _, gs, j = AP_TERM_TAC (Tactics.elpig2holg g) in
+        let gs = List.map Tactics.holg2elpig gs in
+        unset_jrh_lexer;
+        !: gs +! (Tactics.JML (Tactics.Just (j null_inst)))
+      )),
+      DocAbove);
 
-    MLData Tactics.hyp;
-    MLData Tactics.goal;
-    MLData Tactics.just;
-    MLData Tactics.justification;
+      LPDoc "-------------------- cprover ----------------------------";
 
-    MLCode (Pred("hol.tac.ap_term_tac",
-      In(Tactics.goal,"G",
-      Out(BuiltInData.list Tactics.goal,"GS",
-      Out(Tactics.justification,"J",
-      Easy "congruence"))),
-    (fun g _ _ ~depth:_ ->
-      set_jrh_lexer;
-      let _, gs, j = AP_TERM_TAC (Tactics.elpig2holg g) in
-      let gs = List.map Tactics.holg2elpig gs in
-      unset_jrh_lexer;
-      !: gs +! (Tactics.JML (Tactics.Just (j null_inst)))
-    )),
-    DocAbove);
+      MLData (Cprover.t_poly (BuiltInData.poly "I") (BuiltInData.poly "A"));
 
-    LPDoc "-------------------- cprover ----------------------------";
-
-    MLData (Cprover.t_poly (BuiltInData.poly "I") (BuiltInData.poly "A"));
-
-  ]
-  ;;
+    ];;
 
   end
 
@@ -742,7 +738,7 @@ end
                     N))) })
     in
       pcheck proof            
-;;
+  ;;
 
   set_jrh_lexer;;
 

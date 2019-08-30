@@ -112,6 +112,7 @@ pred vinfer-free i:string, o:preterm, o:pretype.
 %%% Overloading.
 
 pred vinfer i:string, o:preterm, o:pretype.
+vinfer S N @tnum :- numeral S N, !.
 vinfer S V A :- vinfer-free S V A, !.
 vinfer S X A :-
   overload S S1 C, refresh-cpretype C A, cinfer S1 X A

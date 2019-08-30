@@ -5,6 +5,9 @@
 type_invention_warning := false;;
 unreserve_words ["^"];; (* "^" is used for antiquotation *)
 
+(* Load the program *)
+let prg = ref (Hol_elpi.hol());;
+
 (* Use one of the following. *)
 let pterms = load_parsed_terms "elpi/CORE.bin";;
 let pterms = load_parsed_terms "elpi/MULTIVARIATE.bin";;
@@ -30,17 +33,21 @@ let term_noparse (s,ptm,tm,st) =
 let ko_terms = filter_progress term_noparse pterms;;
 length ko_terms;;
 
+let elaborate (ptm : preterm) : term =
+  let ptm = Hol_elpi.elaborate_preterm_with !prg ptm in
+  term_of_preterm ptm;;
+
 (* Returns true if the elaborator fails (including GABS). *)
 let term_noelab (_,ptm,tm,st) =
   set_hol_status st;
-  not (can Hol_elpi.elaborate ptm);;
+  not (can elaborate ptm);;
 
 (* Same as above, excluding GABS. *)
 let term_noelab (_,ptm,tm,st) =
   if contains_gabs tm then false else
   begin
     set_hol_status st;
-    not (can Hol_elpi.elaborate ptm)
+    not (can elaborate ptm)
   end;;
 
 let ko_terms = filter_progress term_noelab pterms;;
@@ -52,7 +59,7 @@ length ko_terms;;
 (* NB2: (Also return true if the elaborator fails.) *)
 let term_elab_neq (_,ptm,tm,st) =
   set_hol_status st;
-  try let qtm = Hol_elpi.elaborate ptm in
+  try let qtm = elaborate ptm in
       not (term_eq tm qtm)
   with Failure _ -> true;;
 
@@ -74,6 +81,8 @@ length ko_terms;;
 (* ------------------------------------------------------------------------- *)
 
 (* Useful snippets. *)
+prg := Hol_elpi.hol();;
+
 !Hol_elpi.elab_predicate;;
 Hol_elpi.elab_predicate := "elab";;
 Hol_elpi.elab_predicate := "elaborate";;

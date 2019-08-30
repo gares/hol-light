@@ -262,9 +262,13 @@ subtract [] _ [].
 subtract [X|Xs] Ys Zs :- std.mem! Ys X, !, subtract Xs Ys Zs.
 subtract [X|Xs] Ys [X|Zs] :- subtract Xs Ys Zs.
 
+pred pmk_forall i:preterm, i:preterm, o:preterm.
+pmk_forall (varp _ A as V) X
+  (combp (constp "!" (@tyfun (@tyfun A @tybool) @tybool)) (absp V X)).
+
 pred list_pmk_forall i:list preterm, i:preterm, o:preterm.
 list_pmk_forall [] X X.
-list_pmk_forall [V|Vs] X (absp V X1) :- list_pmk_forall Vs X X1.
+list_pmk_forall [V|Vs] X Y :- list_pmk_forall Vs X Z, pmk_forall V Z Y.
 
 %% ----------------------------------------------------------------------------
 %% Basic type-checking algorithm for HOL on preterms.

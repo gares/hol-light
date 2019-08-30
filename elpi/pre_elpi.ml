@@ -33,9 +33,18 @@ let print_hide_coercions fmt tm =
 (* Minimal set of coercions.                                                 *)
 (* ------------------------------------------------------------------------- *)
 
-(*add_coercion `real_of_num`;;*)
+(* Bogus definition of constant types and terms when needed. *)
+
+try new_type ("real",0) with Failure _ -> ();;
+try new_type ("int" ,0) with Failure _ -> ();;
+
+try new_constant ("int_of_num" , `:num->int `) with Failure _ -> ();;
+try new_constant ("real_of_int", `:int->real`) with Failure _ -> ();;
+
 add_coercion `int_of_num`;;
 add_coercion `real_of_int`;;
+
+(* add_coercion `real_of_num`;; *)
 (* add_coercion `ring_carrier`;; *)
 
 (* ------------------------------------------------------------------------- *)

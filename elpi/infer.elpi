@@ -55,7 +55,7 @@ pred infer i:preterm, o:preterm, o:pretype, i:prop.
 infer (varp S _) X A K :-
     vinfer S X A,
     if (X = varp _ _)
-       ((vinfer S X A :- !) => K)
+       ((vinfer-free S X A :- !) => K)
        K.
 
 %%% Combinations.
@@ -67,32 +67,41 @@ infer (combp F X) (combp F1 X1) B K :-
 
 infer (absp (varp S _) X) (absp (varp S A) X1) (@tfun A B) K :-
   !,
-  ((vinfer S (varp S A) A :- !) => infer X X1 B true),
+  ((vinfer-free S (varp S A) A :- !) => infer X X1 B true),
   K.
 
-% % Generalized abstractions.
-% infer (absp X Y) (combp GABS GFUN) FunTy K :-
-%     FunTy = @tfun A B,
-%     GABS = constp "GABS" (@tfun (@tfun FunTy @tbool) FunTy),
-%     GFUN = absp FVAR Body,
-%     FVAR = varp "f" FunTy,
-%     GEQ = @tbinop (constp "GEQ" (@tfun2 B B @tbool))
-%                  (combp FVAR X1)
-%                  Y1,
-%     infer X X1 A
-%         ( frees X1 Vs,
-%           list_pmk_forall Vs GEQ Body,
-%           infer Y Y1 B true
-%         ),
-%     K.
+macro @geq A X Y :- @tbinop (constp "GEQ" (@tfun2 A A @tbool)) X Y.
+macro @gabs A B X :-
+  combp (constp "GABS" (@tfun (@tfun (@tfun A B) @tbool) (@tfun A B))) X.
+
+%%% Generalized abstractions.
+
+pred pmk_gabs i:pretype, i:pretype, i:list preterm,
+              i:preterm, i:preterm, o:preterm.
+pmk_gabs A B Vs X Y (@gabs A B (absp F Z)) :-
+  F = varp "f" (@tfun (@tfun A B) @tbool),
+  list_pmk_forall Vs (@geq B (combp F X) Y) Z.
+
+infer (absp X Y) Z (@tfun A B) K :-
+  infer X X1 A true,
+  frees X1 Vs,
+  (vinfer-free S (varp S A) A :- std.mem! Vs (varp S A), !)
+  => infer Y Y1 B true,
+  pmk_gabs A B Vs X1 Y1 Z, 
+  K.
 
 %%% Type annotations.
 
 infer (typing X A) X1 A K :- infer X X1 A K.
 
+%%% Free variables.
+
+pred vinfer-free i:string, o:preterm, o:pretype.
+
 %%% Overloading.
 
 pred vinfer i:string, o:preterm, o:pretype.
+vinfer S V A :- vinfer-free S V A, !.
 vinfer S X A :-
   overload S S1 C, refresh-cpretype C A, cinfer S1 X A
   ;
@@ -176,7 +185,14 @@ status
 
 pred infer_test.
 infer_test :- status PP, PP => run-tests
-  [ section "Elaborate"
+  [ section "has_type"
+  , ok-eq (@tfun @tbool @tnum)
+      (has_type
+        (@gabs @tbool @tnum
+          (varp "u" (@tfun (@tfun @tbool @tnum) @tbool))))
+  , ok-eq @tbool
+      (has_type (@geq @tbool (varp "x" @tbool) (varp "x" @tbool)))
+  , section "Elaborate"
   , ok-elaborate @a (constp "a" @tnum)
   , ok-elaborate (typing @x @bty) (varp "x" @bty)
   , ok-elaborate (combp @f @a)
@@ -202,5 +218,30 @@ infer_test :- status PP, PP => run-tests
   , ok-elaborate (@eqvar (@i "id") (absp @x @a))
       (@eq (@tfun @tnum @tnum)
            (constp "id" (@tfun @tnum @tnum))
-           (absp (varp "x" (@tnum)) (constp "a" (@tnum))))
+           (absp (varp "x" @tnum) (constp "a" @tnum)))
+  , ok-elaborate (absp (combp @f @x) @x)
+      (combp
+        (constp "GABS" 
+          (ptycon "fun" 
+            [ptycon "fun" [(ptycon "fun" [@tnum, @tnum]), @tbool], 
+             (ptycon "fun" [@tnum, @tnum])])) 
+        (absp
+          (varp "f" 
+            (ptycon "fun" [(ptycon "fun" [@tnum, @tnum]), @tbool])) 
+          (combp
+            (constp "!" 
+              (ptycon "fun" 
+                [ptycon "fun" [@tnum, @tbool], @tbool])) 
+            (absp (varp "x" @tnum) 
+              (combp
+                (combp
+                  (constp "GEQ" 
+                    (ptycon "fun" 
+                      [@tnum, ptycon "fun" [@tnum, @tbool]])) 
+                  (combp
+                    (varp "f" 
+                      (ptycon "fun" 
+                        [(ptycon "fun" [@tnum, @tnum]), @tbool])) 
+                    (combp (constp "f" ((ptycon "fun" [@tnum, @tnum]))) 
+                      (varp "x" @tnum)))) (varp "x" @tnum))))))
   ].

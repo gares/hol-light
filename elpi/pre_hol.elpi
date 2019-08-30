@@ -335,4 +335,15 @@ pre_hol_tests :- run-tests
 , ok (has_type (combp (constp "f" (ptycon "fun" [uty "A", uty "B"]))
                       (varp "x" (uty "A")))
                (uty "B"))
+, section "pmk_forall"
+, ok-eq
+    (combp
+      (constp "!" (@tyfun (@tyfun (uty "A") @tybool) @tybool))
+      (absp (varp "x" (uty "A")) (constp "a" @tybool)))
+    (pmk_forall (varp "x" (uty "A")) (constp "a" @tybool))
+, ok-eq @tybool
+    (has_type
+      (combp
+        (constp "!" (@tyfun (@tyfun (uty "A") @tybool) @tybool))
+        (absp (varp "x" (uty "A")) (constp "a" @tybool))))
 ].

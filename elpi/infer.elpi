@@ -15,6 +15,7 @@ macro @tnum   :- @tcon  "num".
 macro @tind   :- @tcon  "ind".
 macro @tdty   :- ptycon  "" [].
 macro @tfun A B :- ptycon  "fun" [A, B].
+macro @funp L :- ptycon  "fun" L.
 macro @tfun2 A B C :- @tfun A (@tfun B C).
 
 % Terms.
@@ -79,7 +80,7 @@ macro @gabs A B X :-
 pred pmk_gabs i:pretype, i:pretype, i:list preterm,
               i:preterm, i:preterm, o:preterm.
 pmk_gabs A B Vs X Y (@gabs A B (absp F Z)) :-
-  F = varp "f" (@tfun (@tfun A B) @tbool),
+  F = varp "f" (@tfun A B),
   list_pmk_forall Vs (@geq B (combp F X) Y) Z.
 
 infer (absp X Y) Z (@tfun A B) K :-
@@ -87,7 +88,7 @@ infer (absp X Y) Z (@tfun A B) K :-
   frees X1 Vs,
   (vinfer-free S (varp S A) A :- std.mem! Vs (varp S A), !)
   => infer Y Y1 B true,
-  pmk_gabs A B Vs X1 Y1 Z, 
+  pmk_gabs A B Vs X1 Y1 Z,
   K.
 
 %%% Type annotations.
@@ -153,14 +154,24 @@ type ok-elaborate preterm -> preterm -> test.
 type ko-elaborate preterm -> test.
 
 run-test (ok-elaborate X Y) Ret :-
-  elaborate X Z, !,
+  infer X Z A true, !,
   if (same_term Y Z)
-     ( Ret = success "" )
-     (
-       Ret = failure Msg,
-       Msg is "Success with wrong return vaule.\nExpected: " ^
-              {term_to_string Y} ^ "\nReturned: " ^ {term_to_string Z}
-     ).
+    (
+      if (has_type Z A1)
+        (
+          if (same_term A A1)
+            ( Ret = success "" )
+            ( Ret = failure "Wrong type" )
+        ) (
+          Msg is "Malformed term (has_type fails)\n" ^
+                 {term_to_string X} ^ "\n-->\n" ^ {term_to_string Z},
+          Ret = failure Msg
+        )
+    ) (
+      Ret = failure Msg,
+      Msg is "Success with wrong return vaule.\nExpected: " ^
+             {term_to_string Y} ^ "\nReturned: " ^ {term_to_string Z}
+    ).
 run-test (ok-elaborate _ Y) (failure Msg) :-
   Msg is "Call failed.  Expected: " ^ {term_to_string Y}.
 run-test (ko-elaborate X) (failure Msg) :- elaborate X Y, !,
@@ -192,6 +203,29 @@ infer_test :- status PP, PP => run-tests
           (varp "u" (@tfun (@tfun @tbool @tnum) @tbool))))
   , ok-eq @tbool
       (has_type (@geq @tbool (varp "x" @tbool) (varp "x" @tbool)))
+  , section "pmk_gabs"
+  , ok-eq
+      (combp
+        (constp "GABS"
+          (@funp [@funp [@tfun @tnum @tnum, @tbool], @tfun @tnum @tnum]))
+        (absp (varp "f" (@tfun @tnum @tnum))
+          (combp
+            (constp "!" (@funp [@funp [@tnum, @tbool], @tbool]))
+            (absp (varp "m" @tnum)
+              (combp
+                (constp "!" (@funp [@funp [@tfun @tnum @tnum, @tbool], @tbool]))
+                (absp (varp "s" (@tfun @tnum @tnum))
+                  (combp
+                    (combp
+                      (constp "GEQ" (@funp [@tnum, @funp [@tnum, @tbool]]))
+                      (combp
+                        (varp "f" (@tfun @tnum @tnum))
+                        (combp (varp "s" (@tfun @tnum @tnum))
+                          (varp "m" @tnum)))) (varp "x" @tnum))))))))
+      (pmk_gabs @tnum @tnum [varp "m" @tnum, varp "s" (@tfun @tnum @tnum)]
+        (combp (varp "s" (@tfun @tnum @tnum))
+               (varp "m" @tnum))
+        (varp "x" @tnum))
   , section "Elaborate"
   , ok-elaborate @a (constp "a" @tnum)
   , ok-elaborate (typing @x @bty) (varp "x" @bty)
@@ -221,27 +255,24 @@ infer_test :- status PP, PP => run-tests
            (absp (varp "x" @tnum) (constp "a" @tnum)))
   , ok-elaborate (absp (combp @f @x) @x)
       (combp
-        (constp "GABS" 
-          (ptycon "fun" 
-            [ptycon "fun" [(ptycon "fun" [@tnum, @tnum]), @tbool], 
-             (ptycon "fun" [@tnum, @tnum])])) 
+        (constp "GABS"
+          (ptycon "fun"
+            [@funp [(@tfun @tnum @tnum), @tbool],
+             (@tfun @tnum @tnum)]))
         (absp
-          (varp "f" 
-            (ptycon "fun" [(ptycon "fun" [@tnum, @tnum]), @tbool])) 
+          (varp "f" (@tfun @tnum @tnum))
           (combp
-            (constp "!" 
-              (ptycon "fun" 
-                [ptycon "fun" [@tnum, @tbool], @tbool])) 
-            (absp (varp "x" @tnum) 
+            (constp "!"
+              (ptycon "fun"
+                [@funp [@tnum, @tbool], @tbool]))
+            (absp (varp "x" @tnum)
               (combp
                 (combp
-                  (constp "GEQ" 
-                    (ptycon "fun" 
-                      [@tnum, ptycon "fun" [@tnum, @tbool]])) 
+                  (constp "GEQ"
+                    (ptycon "fun"
+                      [@tnum, @funp [@tnum, @tbool]]))
                   (combp
-                    (varp "f" 
-                      (ptycon "fun" 
-                        [(ptycon "fun" [@tnum, @tnum]), @tbool])) 
-                    (combp (constp "f" ((ptycon "fun" [@tnum, @tnum]))) 
+                    (varp "f" (@tfun @tnum @tnum))
+                    (combp (constp "f" ((@tfun @tnum @tnum)))
                       (varp "x" @tnum)))) (varp "x" @tnum))))))
   ].

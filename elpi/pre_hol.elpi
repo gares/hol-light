@@ -221,11 +221,11 @@ open-term (ptmfree V B) X :- open-term (B V) X.
 %% i.e., for preterms where all variables occurs with a dummy pretype.
 %% ----------------------------------------------------------------------------
 
+% Warning: this does not work properly with generalized abstractions.
 pred free-vars i:preterm, i:list preterm, o:list preterm.
-
-free-vars (varp S TY as V) L L1 :-
+free-vars (varp S TY) L L1 :-
   overload S S1 _, !,
-  (overload _ _ _ :- !, fail) => free-vars (varp S1 TY as V) L L1.
+  (overload _ _ _ :- !, fail) => free-vars (varp S1 TY) L L1.
 free-vars (varp S _ as V) L L :- (std.mem! L V ; env S _ _ ; numeral S _), !.
 free-vars (varp _ _ as V) L [V|L].
 free-vars (typing T _) L L1 :- free-vars T L L1.
@@ -238,6 +238,19 @@ free-vars (absp (varp _ _ as V) T) L L1 :-
 free-vars (absp (typing (varp _ _ as V) _) T) L L1 :-
   (pi L\ free-vars V L L :- !) =>
   free-vars T L L1.
+
+% Alternative version that works with GABS.
+pred freevars i:preterm, o:list string.
+freevars (varp S TY) Vs  :-
+  overload S S1 _, !,
+  (overload _ _ _ :- !, fail) => freevars (varp S1 TY) Vs.
+freevars (varp S _) [] :- (env S _ _ ; numeral S _), !.
+freevars (varp S _) [S].
+freevars (typing X _) Vs :- freevars X Vs.
+freevars (combp X Y) Vs :- union {freevars X} {freevars Y} Vs.
+freevars (absp X Y) Vs :-
+  freevars X Us,
+  (pi S \ freevars (varp S _) [] :- std.mem! Us S, !) => freevars Y Vs.
 
 %% ----------------------------------------------------------------------------
 %% Free variables.
@@ -314,9 +327,13 @@ pre_hol_tests :- run-tests
            ptmbody (lamp (varp "x" _) B \ combp B A))
         (close-term (absp (varp "x" (uty "t"))
           (combp (varp "x" (uty "t")) (varp "x" (uty "s")))))
+, section "free-vars"
 , ok-eq [varp "y" (ptycon "" [])]
         (free-vars (absp (varp "x" (ptycon "" []))
                       (varp "y" (ptycon "" []))) [])
+, section "freevars"
+, ok-eq ["y"]
+    (freevars (absp (varp "x" (ptycon "" [])) (varp "y" (ptycon "" []))))
 , section "frees"
 , ok-eq [varp "x" @aaty, varp "y" @bbty]
     (frees (combp (varp "x" @aaty) (varp "y" @bbty)))

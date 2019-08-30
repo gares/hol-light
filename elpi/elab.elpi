@@ -43,7 +43,7 @@ shorten verbosity.{ quiet, terse, info, verbose, debug, when-verbosity }.
 
 elab T R :-
   % we assume a SINGLE type for each free variable
-  free-vars T [] VS, std.map VS build-clause-fv VST, (VST =>
+  freevars T VS, std.map VS build-clause-fv VST, (VST =>
    (
     % we try with no coercions
     ((coercions [] :- !) => of T TY R)
@@ -54,9 +54,9 @@ elab T R :-
   ),
   when-verbosity debug (print VS "|-" T "\n-e->\n" R ":" TY).
 
-pred build-clause-fv i:preterm, o:prop.
+pred build-clause-fv i:string, o:prop.
 
-build-clause-fv (varp S _) (of (varp S _) Ty (varp S Ty) :- !).
+build-clause-fv S (of (varp S _) Ty (varp S Ty) :- !).
  
 %% ----------------------------------------------------------------------------
 %% typing
@@ -75,14 +75,11 @@ of (varp S _) TY (constp S TY) :- env S S CTY, refresh-cpretype CTY TY.
 pred is_varp o:string, o:pretype.
 
 :name "of:abstraction"
-of (absp (varp S D) F) (@fun [Src,Tgt]) (absp (varp S Src) F1) :-
-  is_varp S Src =>
-  (of (varp S D) Src (varp S Src) :- !) =>
-    of F Tgt F1.
-of (absp (typing (varp S D) Src) F) (@fun [Src,Tgt]) (absp (varp S Src) F1) :-
-  is_varp S Src =>
-  (of (varp S D) Src (varp S Src) :- !) =>
-    of F Tgt F1.
+of (absp X Y) (@fun [A,B]) (absp X1 Y1) :-
+  freevars X Us,
+  std.map Us build-clause-fv Cs,
+  Cs => of X A X1,
+  Cs => of Y B Y1.
 
 :name "of:application"
 of (combp A B) Tgt (combp A1 B1) :-

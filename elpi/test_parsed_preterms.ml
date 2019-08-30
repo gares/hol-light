@@ -82,11 +82,11 @@ length pterms;;
 
 length ko_terms;;
 
-let ko_terms = filter_progress term_noparse (take 200 pterms);;
+let ko_terms = filter_progress term_noelab (take 200 pterms);;
 
 map (fun str,ptm,tm,st -> tm) ko_terms;;
 
-let ko_terms2 = filter_progress term_noparse ko_terms;;
+let ko_terms2 = filter_progress term_noelab ko_terms;;
 length ko_terms2;;
 
 let str,ptm,tm,st = hd (ko_terms);;

@@ -76,20 +76,30 @@ macro @gabs A B X :-
   combp (constp "GABS" (@tfun (@tfun (@tfun A B) @tbool) (@tfun A B))) X.
 
 %%% Generalized abstractions.
-
-pred pmk_gabs i:pretype, i:pretype, i:list preterm,
-              i:preterm, i:preterm, o:preterm.
-pmk_gabs A B Vs X Y (@gabs A B (absp F Z)) :-
-  F = varp "f" (@tfun A B),
-  list_pmk_forall Vs (@geq B (combp F X) Y) Z.
-
-infer (absp X Y) Z (@tfun A B) K :-
+%%% Simplified version: concrete syntax of generalized abstraction is
+%%% delegated to the HOL library function term_of_preterm.
+infer (absp X Y) (absp X1 Y1) (@tfun A B) K :-
   infer X X1 A true,
   frees X1 Vs,
   (vinfer-free S (varp S A) A :- std.mem! Vs (varp S A), !)
   => infer Y Y1 B true,
-  pmk_gabs A B Vs X1 Y1 Z,
   K.
+
+%%% Version that produces the concrete form of the generalized abstraction.
+% infer (absp X Y) Z (@tfun A B) K :-
+%   infer X X1 A true,
+%   frees X1 Vs,
+%   (vinfer-free S (varp S A) A :- std.mem! Vs (varp S A), !)
+%   => infer Y Y1 B true,
+%   pmk_gabs A B Vs X1 Y1 Z,
+%   K.
+
+pred pmk_gabs i:pretype, i:pretype, i:list preterm,
+              i:preterm, i:preterm, o:preterm.
+pmk_gabs _ _ _ (varp _ _ as V) X (absp V X) :- !.
+pmk_gabs A B Vs X Y (@gabs A B (absp F Z)) :-
+  F = varp "f" (@tfun A B),
+  list_pmk_forall Vs (@geq B (combp F X) Y) Z.
 
 %%% Type annotations.
 

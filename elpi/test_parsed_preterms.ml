@@ -29,10 +29,13 @@ let term_noparse (s,ptm,tm,st) =
 
 let ko_terms = filter_progress term_noparse pterms;;
 length ko_terms;;
-(* Run 2019-08-22: All terms in CORE pass this test. *)
 
-(* Returns true if the elaborator fails. *)
-(* NB: Skips (i.e. return false) terms that contain the constant GABS. *)
+(* Returns true if the elaborator fails (including GABS). *)
+let term_noelab (_,ptm,tm,st) =
+  set_hol_status st;
+  not (can Hol_elpi.elaborate ptm);;
+
+(* Same as above, excluding GABS. *)
 let term_noelab (_,ptm,tm,st) =
   if contains_gabs tm then false else
   begin
@@ -42,11 +45,18 @@ let term_noelab (_,ptm,tm,st) =
 
 let ko_terms = filter_progress term_noelab pterms;;
 length ko_terms;;
-(* Run 2019-08-23: All terms in CORE pass this test. *)
+(* Run 2019-08-30: All terms in CORE pass this test with elaborate. *)
+(* Run 2019-08-22: All terms without GABS in CORE pass this test with elab. *)
 
 (* Returns true if the elaborator returns a different term. *)
-(* NB: Skips (i.e. return false) terms that contain the constant GABS. *)
 (* NB2: (Also return true if the elaborator fails.) *)
+let term_elab_neq (_,ptm,tm,st) =
+  set_hol_status st;
+  try let qtm = Hol_elpi.elaborate ptm in
+      not (term_eq tm qtm)
+  with Failure _ -> true;;
+
+(* Same as above, excluding GABS. *)
 let term_elab_neq (_,ptm,tm,st) =
   if contains_gabs tm then false else
   begin
@@ -64,16 +74,27 @@ length ko_terms;;
 (* ------------------------------------------------------------------------- *)
 
 (* Useful snippets. *)
+!Hol_elpi.elab_predicate;;
+Hol_elpi.elab_predicate := "elab";;
+Hol_elpi.elab_predicate := "elaborate";;
+
 length pterms;;
 
 length ko_terms;;
 
 let ko_terms = filter_progress term_noparse (take 200 pterms);;
 
-do_list (fun (s,_,_,_,_,_) -> report s) ko_terms;;
+map (fun str,ptm,tm,st -> tm) ko_terms;;
 
-let (s,ptm,tm,st) = el 0 ko_terms;;
+let ko_terms2 = filter_progress term_noparse ko_terms;;
+length ko_terms2;;
+
+let str,ptm,tm,st = hd (ko_terms);;
 set_hol_status st;;
+let ptm' = Hol_elpi.elaborate_preterm ptm;;
+let tm' = term_of_preterm ptm';;
+
+
 Hol_elpi.elaborate_preterm ptm;;
 (Hol_elpi.elaborate_preterm o fst o parse_preterm o lex o explode) "coprime";;
 

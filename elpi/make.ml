@@ -44,6 +44,9 @@ module Hol_elpi : sig
   (* The ``quotation`` calling Elpi's elab predicate *)
   val quotation : string -> term
 
+  (* Name of the predicate for the elaborator. *)
+  val elab_predicate : string ref
+
   (* The ``elaborator`` calling Elpi's elab predicate *)
   val elaborate_preterm : preterm -> preterm
 
@@ -692,11 +695,13 @@ end
     null_meta, List.map Tactics.elpig2holg goals, (fun _ -> Tactics.interp_j just)
   ;;
 
+  let elab_predicate = ref "elaborate";;
+
   (* This runs the elpi query requesting the elaboration of a given term *)
   let elaborate_preterm p =
     let elab_p, _ = run_predicate ~typecheck:false (hol ())
       (Query.Query {
-        predicate = "elab";
+        predicate = !elab_predicate;
         arguments = D(Hol_preterm.t,p,
                     Q(Hol_preterm.t,"Elab_p",
                     N)) })

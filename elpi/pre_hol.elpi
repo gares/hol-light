@@ -214,14 +214,14 @@ pred open-term i:cpreterm, o:preterm.
 open-term (ptmbody X) R :- ptmunbind X R.
 open-term (ptmfree V B) X :- open-term (B V) X.
 
-pred free-vars i:preterm, i:list preterm, o:list preterm.
-
 %% ----------------------------------------------------------------------------
 %% Free variables.
 %%
 %% NB: This version of free-vars is for parsed preterms,
 %% i.e., for preterms where all variables occurs with a dummy pretype.
 %% ----------------------------------------------------------------------------
+
+pred free-vars i:preterm, i:list preterm, o:list preterm.
 
 free-vars (varp S TY as V) L L1 :-
   overload S S1 _, !,

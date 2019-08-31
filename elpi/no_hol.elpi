@@ -26,4 +26,5 @@ numeral "0"
 main :-
   with-verbosity terse pre_hol_tests,
   with-verbosity terse elab_tests,
-  with-verbosity terse infer_test.
+  with-verbosity terse infer_test,
+  with-verbosity terse elaborate_tests.

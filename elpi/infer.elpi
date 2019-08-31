@@ -9,9 +9,11 @@
 %% ----------------------------------------------------------------------------
 
 % Types.
+macro @tvar S :- varp S (ptycon "" []).
 macro @tcon A :- ptycon A [].
 macro @tbool  :- @tcon  "bool".
 macro @tnum   :- @tcon  "num".
+macro @treal  :- @tcon  "real".
 macro @tind   :- @tcon  "ind".
 macro @tdty   :- ptycon  "" [].
 macro @tfun A B :- ptycon  "fun" [A, B].
@@ -61,8 +63,10 @@ infer (varp S _) X A K :-
 
 %%% Combinations.
 
+% infer (combp F X) (combp F1 X1) B K :-
+%   infer F F1 (@tfun A B) (infer X X1 A K).
 infer (combp F X) (combp F1 X1) B K :-
-  infer F F1 (@tfun A B) (infer X X1 A K).
+  infer F F1 (@tfun A B) (infer-coerce X X1 A K).
 
 %%% Abstractions.
 
@@ -85,16 +89,15 @@ infer (absp X Y) (absp X1 Y1) (@tfun A B) K :-
   => infer Y Y1 B true,
   K.
 
-pred pmk_gabs i:pretype, i:pretype, i:list preterm,
-              i:preterm, i:preterm, o:preterm.
-pmk_gabs _ _ _ (varp _ _ as V) X (absp V X) :- !.
-pmk_gabs A B Vs X Y (@gabs A B (absp F Z)) :-
-  F = varp "f" (@tfun A B),
-  list_pmk_forall Vs (@geq B (combp F X) Y) Z.
-
 %%% Type annotations.
 
-infer (typing X A) X1 A K :- infer X X1 A K.
+% infer (typing X A) X1 A K :- infer X X1 A K.
+infer (typing X A) X1 A K :- infer-coerce X X1 A K.
+
+pred infer-coerce i:preterm, o:preterm, o:pretype, i:prop.
+infer-coerce X Y A K :-
+  infer X Z B K,
+  trans-coercion B A Z Y.
 
 %%% Free variables.
 
@@ -127,6 +130,13 @@ infer-gabs-clause
       => infer Y Y1 B true,
       pmk_gabs A B Vs X1 Y1 Z,
       K).
+
+pred pmk_gabs i:pretype, i:pretype, i:list preterm,
+              i:preterm, i:preterm, o:preterm.
+pmk_gabs _ _ _ (varp _ _ as V) X (absp V X) :- !.
+pmk_gabs A B Vs X Y (@gabs A B (absp F Z)) :-
+  F = varp "f" (@tfun A B),
+  list_pmk_forall Vs (@geq B (combp F X) Y) Z.
 
 %% ----------------------------------------------------------------------------
 %% Further macros.
@@ -292,4 +302,50 @@ infer_test :- status PP, PP => run-tests
         R \ infer-gabs-clause H,
             H => elaborate (absp (combp @f @x) @x) R
     )
+  ].
+
+macro @num0 :-
+  (combp (constp "NUMERAL" (ptycon "fun" [ptycon "num" [], ptycon "num" []]))
+    (constp "_0" (ptycon "num" []))).
+
+pred elaborate_tests.
+elaborate_tests :-
+  tiny_env TinyEnv,
+  TinyEnv => run-tests
+  [ section "elaborate"
+  , ok-eq
+      (absp (varp "x" (@funp [@tnum, @tcon "1"]))
+        (combp (varp "y" (@funp [@tcon "1", @tcon "2"])) 
+          (combp (varp "x" (@funp [@tnum, @tcon "1"])) 
+            @num0)))
+      (elaborate (absp (varp "x" (uty "t"))
+        (combp (varp "y" (uty "t"))
+          (combp (varp "x" (uty "t")) (@tvar "0")))))
+  , section "elaborate w/ coercions"
+  , ok-eq
+      (absp (varp "x" (@funp [@treal, @tbool])) 
+        (combp (varp "y" (@funp [@tbool, @tcon "1"])) 
+          (combp (varp "x" (@funp [@treal, @tbool])) 
+            (combp
+              (constp "real_of_num" (@funp [@tnum, @treal])) 
+              @num0))))
+      (elaborate
+        (absp (typing (varp "x" (uty "t")) (@funp [@treal, @tbool]))
+          (combp (varp "y" (uty "t"))
+            (combp (varp "x" (uty "t")) (@tvar "0")))))
+  ],
+  small_env SmallEnv,
+  SmallEnv => run-tests
+  [ section "elaborate2"
+  , ok-eq
+      (absp (varp "x" (@funp [ptycon "complex" [], @tbool])) 
+        (combp (varp "x" (@funp [ptycon "complex" [], @tbool])) 
+          (combp
+            (constp "complex_of_real" (@funp [@treal, ptycon "complex" []]))
+            (combp
+              (constp "real_of_num" (@funp [@tnum, @treal])) 
+              @num0))))
+      (elaborate
+        (absp (typing (varp "x" (uty "t")) (@funp [@tcon "complex", @tbool]))
+          (combp (varp "x" (uty "t")) (@tvar "0"))))
   ].

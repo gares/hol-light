@@ -121,9 +121,8 @@ error L :- std.forall L (x\ print "Error:" x), fail.
 */
 
 pred trans-coercion o:pretype, o:pretype, o:preterm, o:preterm.
-%% TODO: The notation == for same_term does work in the embedded interpreter,
 %% but does not work in the elpi toplevel.
-trans-coercion X X1 T T :- same_term X X1, !.
+trans-coercion X X1 T T :- X == X1, !.
 trans-coercion X X T T.
 trans-coercion A B T R1 :-
   coercions Coercions,

@@ -29,6 +29,7 @@ type section string -> test.
 type ok, ko prop -> test.
 type okb, kob (bool -> prop) -> test.
 type ok-eq A -> (A -> prop) -> test.
+type ok-all, ok-ex (A -> test) -> test.
 
 pred run-test i:test, o:outcome.
 
@@ -42,7 +43,7 @@ run-test (ko P) (failure "Should fail.") :- P, !.
 run-test (ko _) (success "Call fails, as expected.").
 
 run-test (ok-eq A P) Ret :- P Out, !,
-    if (equal Out A)
+    if (Out = A)
        (Ret = success "")
        (S is "Wrong return value.\nExpected: " ^ {term_to_string A} ^
               "\n  Result: " ^ {term_to_string Out},
@@ -52,7 +53,7 @@ run-test (ok-eq _ _) (failure "No solution found.").
 run-test (okb P) Ret :-
     sigma X\ P X, !,
     % Todo: what if X is flexible?
-    if (equal tt X)
+    if (tt == X)
        (Ret = success "")
        (Ret = failure "Returned ff.").
 run-test (okb _) (failure "No solution found.").
@@ -60,10 +61,13 @@ run-test (okb _) (failure "No solution found.").
 run-test (kob P) Ret :-
     sigma X\ P X, !,
     % Todo: what if X is flexible?
-    if (equal ff X)
+    if (ff == X)
        (Ret = success "")
        (Ret = failure "Returned tt.").
 run-test (kob _) (failure "No solution found.").
+
+run-test (ok-all P) Ret :- pi    c \ run-test (P c) Ret.
+run-test (ok-ex  P) Ret :- sigma c \ run-test (P c) Ret.
 
 %% ----------------------------------------------------------------------------
 %% The infrastructure.
@@ -111,10 +115,6 @@ report-test (ignore Msg) S S :-
 pred print-reason i:string.
 print-reason "" :- !.
 print-reason Msg :- print "   Reason:" Msg.
-
-% To be removed when same_term will be available.
-pred equal i:A, i:A.
-equal A A.
 
 pred do! i:list prop.
 do! [].

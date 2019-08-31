@@ -299,7 +299,7 @@ has_type (typing X A) A :- has_type X A.
 %%% Tests.
 %%% ---------------------------------------------------------------------------
 
-shorten test.{ run-tests, ok, ko, okb, kob, ok-eq, section }.
+shorten test.{ run-tests, ok-all, ok-ex, ok, ko, okb, kob, ok-eq, section }.
 shorten verbosity.{ quiet, terse, info, verbose, debug, with-verbosity }.
 
 pred pre_hol_tests.
@@ -317,8 +317,10 @@ pre_hol_tests :- run-tests
         (close-pretype (ptycon "fun" [uty "x", sty 1]))      
 , ok-eq (lamp (varp "x" _) B \ B)
         (ptmbind (absp (varp "x" (uty "t")) (varp "x" (uty "t"))))
-, ok-eq (lamp (varp "x" (sty 0)) B \ varp "x" (uty "t"))
-        (ptmbind (absp (varp "x" (sty 0)) (varp "x" (uty "t"))))
+, ( ok-all c \ ok-eq (lamp (varp "x" c) B \ varp "x" (uty "t"))
+      (ptmbind (absp (varp "x" c) (varp "x" (uty "t")))) )
+, ( ok-ex A \ ok-eq (lamp (varp "x" A) B \ varp "x" (uty "t"))
+      (ptmbind (absp (varp "x" (sty 0)) (varp "x" (uty "t")))) )
 , ok-eq [varp "y" (sty 1), varp "x" (uty "t")]
         (ptmvars (combp (varp "x" (uty "t")) (varp "y" (sty 1))) [])
 , ok-eq (ptmfree (varp "x" (uty "t")) A \ ptmbody A)

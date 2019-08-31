@@ -85,15 +85,6 @@ infer (absp X Y) (absp X1 Y1) (@tfun A B) K :-
   => infer Y Y1 B true,
   K.
 
-%%% Version that produces the concrete form of the generalized abstraction.
-% infer (absp X Y) Z (@tfun A B) K :-
-%   infer X X1 A true,
-%   frees X1 Vs,
-%   (vinfer-free S (varp S A) A :- std.mem! Vs (varp S A), !)
-%   => infer Y Y1 B true,
-%   pmk_gabs A B Vs X1 Y1 Z,
-%   K.
-
 pred pmk_gabs i:pretype, i:pretype, i:list preterm,
               i:preterm, i:preterm, o:preterm.
 pmk_gabs _ _ _ (varp _ _ as V) X (absp V X) :- !.
@@ -124,6 +115,18 @@ vinfer S X A :-
 pred cinfer i:string, o:preterm, o:pretype.
 cinfer S (constp S A) A :- env S _ C, !, refresh-cpretype C A.
 cinfer S (varp S A) A.
+
+%%% Version that produces the concrete form of the generalized abstraction.
+pred infer-gabs-clause o:prop.
+infer-gabs-clause
+  (pi X Y Z A B K X1 Y1 Vs \
+    infer (absp X Y) Z (@tfun A B) K :-
+      infer X X1 A true,
+      frees X1 Vs,
+      (pi S A \ vinfer-free S (varp S A) A :- std.mem! Vs (varp S A), !)
+      => infer Y Y1 B true,
+      pmk_gabs A B Vs X1 Y1 Z,
+      K).
 
 %% ----------------------------------------------------------------------------
 %% Further macros.
@@ -166,11 +169,11 @@ type ko-elaborate preterm -> test.
 
 run-test (ok-elaborate X Y) Ret :-
   infer X Z A true, !,
-  if (same_term Y Z)
+  if (Y == Z)
     (
       if (has_type Z A1)
         (
-          if (same_term A A1)
+          if (A == A1)
             ( Ret = success "" )
             ( Ret = failure "Wrong type" )
         ) (
@@ -264,26 +267,29 @@ infer_test :- status PP, PP => run-tests
       (@eq (@tfun @tnum @tnum)
            (constp "id" (@tfun @tnum @tnum))
            (absp (varp "x" @tnum) (constp "a" @tnum)))
-  , ok-elaborate (absp (combp @f @x) @x)
-      (combp
-        (constp "GABS"
-          (ptycon "fun"
-            [@funp [(@tfun @tnum @tnum), @tbool],
-             (@tfun @tnum @tnum)]))
-        (absp
-          (varp "f" (@tfun @tnum @tnum))
-          (combp
-            (constp "!"
-              (ptycon "fun"
-                [@funp [@tnum, @tbool], @tbool]))
-            (absp (varp "x" @tnum)
-              (combp
+  , ( ok-eq
+        (combp
+          (constp "GABS"
+            (ptycon "fun"
+              [@funp [(@tfun @tnum @tnum), @tbool],
+               (@tfun @tnum @tnum)]))
+          (absp
+            (varp "f" (@tfun @tnum @tnum))
+            (combp
+              (constp "!"
+                (ptycon "fun"
+                  [@funp [@tnum, @tbool], @tbool]))
+              (absp (varp "x" @tnum)
                 (combp
-                  (constp "GEQ"
-                    (ptycon "fun"
-                      [@tnum, @funp [@tnum, @tbool]]))
                   (combp
-                    (varp "f" (@tfun @tnum @tnum))
-                    (combp (constp "f" ((@tfun @tnum @tnum)))
-                      (varp "x" @tnum)))) (varp "x" @tnum))))))
+                    (constp "GEQ"
+                      (ptycon "fun"
+                        [@tnum, @funp [@tnum, @tbool]]))
+                    (combp
+                      (varp "f" (@tfun @tnum @tnum))
+                      (combp (constp "f" ((@tfun @tnum @tnum)))
+                        (varp "x" @tnum)))) (varp "x" @tnum))))))
+        R \ infer-gabs-clause H,
+            H => elaborate (absp (combp @f @x) @x) R
+    )
   ].

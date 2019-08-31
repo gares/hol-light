@@ -2,11 +2,6 @@
 %%% Load Elpi code without HOL and ML.
 %%% ===========================================================================
 
-% TODO: Problem: why this is defined when Elpi is enbedded,
-% but not in the Elpi toplevel? 
-pred same_term i:A, i:A.
-same_term X X.
-
 %% ----------------------------------------------------------------------------
 %% Load elpi files.
 %% ----------------------------------------------------------------------------

@@ -121,7 +121,6 @@ error L :- std.forall L (x\ print "Error:" x), fail.
 */
 
 pred trans-coercion o:pretype, o:pretype, o:preterm, o:preterm.
-%% but does not work in the elpi toplevel.
 trans-coercion X X1 T T :- X == X1, !.
 trans-coercion X X T T.
 trans-coercion A B T R1 :-

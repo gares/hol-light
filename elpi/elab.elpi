@@ -154,67 +154,76 @@ small_env
     ]
   ].
 
-shorten test.{ run-tests, ok, ko, okb, kob, ok-eq, section }.
+shorten test.{ test, run-tests, ok, ko, okb, kob, ok-eq, assert, section }.
 
 macro @tm0 :-
   (combp (constp "NUMERAL" (ptycon "fun" [ptycon "num" [], ptycon "num" []]))
     (constp "_0" (ptycon "num" []))).
 
-pred elab_tests.
-elab_tests :-
+pred elab_tests o:test.
+elab_tests T :-
   tiny_env TinyEnv,
-  TinyEnv => run-tests
-  [ section "close-term"
-  , ok-eq
-      (ptmfree (varp "y" (uty "t")) Y \
-        ptmbody (lamp (varp "x" (@con "1")) X \
-          combp Y (combp X @tm0)))
-      (close-term
-        (absp (varp "x" (uty "t"))
-          (combp (varp "y" (uty "t"))
-            (combp (varp "x" (uty "t")) (@var "0")))))
-  , ok-eq
-      (ptmfree (varp "y" (uty "t")) Y \
-        ptmbody (lamp (varp "x" (uty "t")) X \
-          combp Y (combp X @tm0)))
-      (close-term
-        (absp (varp "x" (uty "t"))
-          (combp (varp "y" (uty "t"))
-            (combp (varp "x" (uty "t")) (@var "0")))))
-  , section "elab"
-  , ok-eq
-      (absp (varp "x" (@fun [@num, @con "1"]))
-        (combp (varp "y" (@fun [@con "1", @con "2"])) 
-          (combp (varp "x" (@fun [@num, @con "1"])) 
-            @tm0)))
-      (elab (absp (varp "x" (uty "t"))
-        (combp (varp "y" (uty "t"))
-          (combp (varp "x" (uty "t")) (@var "0")))))
-  , section "elab w/ coercions"
-  , ok-eq
-      (absp (varp "x" (@fun [@real, @bool])) 
-        (combp (varp "y" (@fun [@bool, @con "1"])) 
-          (combp (varp "x" (@fun [@real, @bool])) 
-            (combp
-              (constp "real_of_num" (@fun [@num, @real])) 
-              @tm0))))
-      (elab
-        (absp (typing (varp "x" (uty "t")) (@fun [@real, @bool]))
-          (combp (varp "y" (uty "t"))
-            (combp (varp "x" (uty "t")) (@var "0")))))
-  ],
   small_env SmallEnv,
-  SmallEnv => run-tests
-  [ section "elab2"
-  , ok-eq
-      (absp (varp "x" (@fun [ptycon "complex" [], @bool])) 
-        (combp (varp "x" (@fun [ptycon "complex" [], @bool])) 
-          (combp
-            (constp "complex_of_real" (@fun [@real, ptycon "complex" []]))
-            (combp
-              (constp "real_of_num" (@fun [@num, @real])) 
-              @tm0))))
-      (elab
-        (absp (typing (varp "x" (uty "t")) (@fun [@con "complex", @bool]))
-          (combp (varp "x" (uty "t")) (@var "0"))))
+  T =
+  section "elab_tests"
+  [ assert TinyEnv
+    ( section "TinyEnv"
+      [ section "close-term"
+        [ ok-eq
+            (ptmfree (varp "y" (uty "t")) Y \
+              ptmbody (lamp (varp "x" (@con "1")) X \
+                combp Y (combp X @tm0)))
+            (close-term
+              (absp (varp "x" (uty "t"))
+                (combp (varp "y" (uty "t"))
+                  (combp (varp "x" (uty "t")) (@var "0")))))
+        , ok-eq
+            (ptmfree (varp "y" (uty "t")) Y \
+              ptmbody (lamp (varp "x" (uty "t")) X \
+                combp Y (combp X @tm0)))
+            (close-term
+              (absp (varp "x" (uty "t"))
+                (combp (varp "y" (uty "t"))
+                  (combp (varp "x" (uty "t")) (@var "0")))))
+        ]
+      , section "elab"
+        [ ok-eq
+            (absp (varp "x" (@fun [@num, @con "1"]))
+              (combp (varp "y" (@fun [@con "1", @con "2"])) 
+                (combp (varp "x" (@fun [@num, @con "1"])) 
+                  @tm0)))
+            (elab (absp (varp "x" (uty "t"))
+              (combp (varp "y" (uty "t"))
+                (combp (varp "x" (uty "t")) (@var "0")))))
+        , section "elab w/ coercions"
+          [ ok-eq
+              (absp (varp "x" (@fun [@real, @bool])) 
+                (combp (varp "y" (@fun [@bool, @con "1"])) 
+                  (combp (varp "x" (@fun [@real, @bool])) 
+                    (combp
+                      (constp "real_of_num" (@fun [@num, @real])) 
+                      @tm0))))
+              (elab
+                (absp (typing (varp "x" (uty "t")) (@fun [@real, @bool]))
+                  (combp (varp "y" (uty "t"))
+                    (combp (varp "x" (uty "t")) (@var "0")))))
+          ]
+        ]
+      ]
+    )
+  , assert SmallEnv
+    ( section "SmallEnv"
+      [ ok-eq
+          (absp (varp "x" (@fun [ptycon "complex" [], @bool])) 
+            (combp (varp "x" (@fun [ptycon "complex" [], @bool])) 
+              (combp
+                (constp "complex_of_real" (@fun [@real, ptycon "complex" []]))
+                (combp
+                  (constp "real_of_num" (@fun [@num, @real])) 
+                  @tm0))))
+          (elab
+            (absp (typing (varp "x" (uty "t")) (@fun [@con "complex", @bool]))
+              (combp (varp "x" (uty "t")) (@var "0"))))
+      ]
+    )
   ].

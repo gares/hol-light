@@ -10,12 +10,46 @@ shorten verbosity.{ quiet, terse, info, verbose, debug,
 namespace test {
 
 %% ----------------------------------------------------------------------------
-%% Ontology for tests, outcomes, statistics.
+%% Outcome of tests.
 %% ----------------------------------------------------------------------------
 
-kind test, outcome, test-stats type.
-type test-stats int -> int -> test-stats. % (Num, Succ) = (total, success). 
+kind outcome type.
 type success, failure, ignore string -> outcome.
+type aggregate test-status -> string -> outcome.
+
+%% ----------------------------------------------------------------------------
+%% Test status.
+%% ----------------------------------------------------------------------------
+
+kind test-status type.
+type test-status int -> int -> test-status. % (N, S) = (total, success). 
+
+pred report-test-status i:test-status.
+report-test-status (test-status N S) :-
+    print "   Passed" S "out of" N.
+
+pred update-test-status i:outcome, i:test-status, o:test-status.
+update-test-status (success _) (test-status N S) (test-status N1 S1) :-
+    N1 is N + 1,
+    S1 is S + 1.
+update-test-status (failure _) (test-status N S) (test-status N1 S) :-
+    N1 is N + 1.
+update-test-status (ignore _) S S.
+update-test-status (aggregate S0 _) S S1 :-
+    aggregate-test-status S0 S S1.
+
+pred aggregate-test-status i:test-status, i:test-status, o:test-status.
+aggregate-test-status (test-status N1 S1)
+                      (test-status N2 S2)
+                      (test-status N3 S3) :-
+    N3 is N1 + N2,
+    S3 is S1 + S2.
+
+%% ----------------------------------------------------------------------------
+%% Tests.
+%% ----------------------------------------------------------------------------
+
+kind test type.
 
 %% ----------------------------------------------------------------------------
 %% Basic stock of predefined tests.
@@ -25,22 +59,27 @@ type success, failure, ignore string -> outcome.
 %%   2. Adding more clauses to `test.run-test`.
 %% ----------------------------------------------------------------------------
 
-type section string -> test.
 type ok, ko prop -> test.
+type assert list prop -> test -> test.
+type section string -> list test -> test.
 type okb, kob (bool -> prop) -> test.
 type ok-eq A -> (A -> prop) -> test.
 type ok-all, ok-ex (A -> test) -> test.
 
 pred run-test i:test, o:outcome.
-
-run-test (section Msg) (ignore "Section title.") :-
-    when-verbosity terse (print "** Section:" Msg).
-
 run-test (ok P) (success "") :- P, !.
 run-test (ok _) (failure "").
 
 run-test (ko P) (failure "Should fail.") :- P, !.
 run-test (ko _) (success "Call fails, as expected.").
+
+run-test (assert P T) Ret :-
+    P => run-test T Ret.
+
+run-test (section Title Ts) (aggregate S Msg) :- !,
+    when-verbosity terse (print "** Start Section:" Title),
+    run-tests-iter Ts (test-status 0 0) S,
+    Msg is  "   End Section: " ^ Title.
 
 run-test (ok-eq A P) Ret :- P Out, !,
     if (Out = A)
@@ -73,44 +112,47 @@ run-test (ok-ex  P) Ret :- sigma c \ run-test (P c) Ret.
 %% The infrastructure.
 %% ----------------------------------------------------------------------------
 
-pred run-tests i:(list test).
+pred run-tests i:list test.
 run-tests Tests :-
     do!
     [ when-verbosity terse (print "run-tests: Start.")
-    , run-tests-iter Tests (test-stats 0 0) (test-stats S N)
+    , run-tests-iter Tests (test-status 0 0) Status
     , when-verbosity terse (print "run-tests: Done!")
-    , when-verbosity quiet (print "Passed" S "out of" N)
+    , when-verbosity quiet (report-test-status Status)
     ].
 
-pred run-tests-iter i:(list test), i:test-stats, o:test-stats.
+pred run-tests-iter i:list test, i:test-status, o:test-status.
 run-tests-iter [] S S.
 run-tests-iter [T|Ts] S S2 :-
     do!
-    [ when-verbosity info (print "-- Test:" T)
+    [ when-verbosity verbose (print "-- Test:" T)
     , run-test T R
-    , report-test R S S1
-    , when-verbosity info (print "   Exit:" T)
+    , report-test R S
+    , update-test-status R S S1
+    , when-verbosity verbose (print "   Exit:" T)
     ],
     run-tests-iter Ts S1 S2.
 run-tests-iter [T|_] _ _ :-
     std.fatal-error-w-data "Unknown test type" T.
 
-pred report-test i:outcome, i:test-stats, o:test-stats.
-report-test (failure Msg) (test-stats Num Succ) (test-stats Num1 Succ) :-
-    Num1 is Num + 1,
+pred report-test i:outcome, i:test-status.
+report-test (failure Msg) (test-status Num _) :-
     when-verbosity quiet (
-        print "!! FAILURE: Test number" Num1,
+        print "!! FAILURE: Test number" Num,
         print-reason Msg
     ).
-report-test (success Msg) (test-stats Num Succ) (test-stats Num1 Succ1) :-
-    Num1 is Num + 1,
-    Succ1 is Succ + 1,
-    when-verbosity info (
-        print "   SUCCESS: Test number" Num1,
+report-test (success Msg) (test-status Num _) :-
+    when-verbosity verbose (
+        print "   SUCCESS: Test number" Num,
         print-reason Msg
     ).
-report-test (ignore Msg) S S :-
+report-test (ignore Msg) _ :-
     when-verbosity verbose (print "   IGNORE:" Msg).
+report-test (aggregate Status Msg) _ :-
+    when-verbosity info (print Msg),
+    when-verbosity info (report-test-status Status).
+report-test Ret _ :-
+    std.fatal-error-w-data "Unknown report kind" Ret.
 
 pred print-reason i:string.
 print-reason "" :- !.

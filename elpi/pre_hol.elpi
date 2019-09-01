@@ -299,70 +299,79 @@ has_type (typing X A) A :- has_type X A.
 %%% Tests.
 %%% ---------------------------------------------------------------------------
 
-shorten test.{ run-tests, ok-all, ok-ex, ok, ko, okb, kob, ok-eq, section }.
+shorten test.{ test, run-tests,
+               ok-all, ok-ex, ok, ko, okb, kob, ok-eq, section }.
 shorten verbosity.{ quiet, terse, info, verbose, debug, with-verbosity }.
 
-pred pre_hol_tests.
-pre_hol_tests :- run-tests
+pred pre_hol_tests o:test.
+pre_hol_tests T :-
+T =
+section "pre_hol_tests"
 [ section "Pre HOL"
-, ok-eq [uty "x"] (ptyvars (uty "x") [])
-, ok-eq [sty 1] (ptyvars (sty 1) [])
-, ok-eq [sty 3, uty "x"] (ptyvars (ptycon "y" [uty "x", sty 3]) [])
-, ok-eq (ptyfree (uty "x") A \ (ptybody A))
-        (ptyclose [uty "x"] (uty "x"))
-, ok-eq (ptyfree (sty 1) A \ ptybody (uty "x"))
-        (ptyclose [sty 1] (uty "x"))
-, ok-eq (ptyfree (sty 1) A \ ptyfree (uty "x") B \
-           ptybody (ptycon "fun" [B, A]))
-        (close-pretype (ptycon "fun" [uty "x", sty 1]))      
-, ok-eq (lamp (varp "x" _) B \ B)
-        (ptmbind (absp (varp "x" (uty "t")) (varp "x" (uty "t"))))
-, ( ok-all c \ ok-eq (lamp (varp "x" c) B \ varp "x" (uty "t"))
-      (ptmbind (absp (varp "x" c) (varp "x" (uty "t")))) )
-, ( ok-ex A \ ok-eq (lamp (varp "x" A) B \ varp "x" (uty "t"))
-      (ptmbind (absp (varp "x" (sty 0)) (varp "x" (uty "t")))) )
-, ok-eq [varp "y" (sty 1), varp "x" (uty "t")]
-        (ptmvars (combp (varp "x" (uty "t")) (varp "y" (sty 1))) [])
-, ok-eq (ptmfree (varp "x" (uty "t")) A \ ptmbody A)
-        (close-term (varp "x" (uty "t")))
-, ok-eq (ptmfree (varp "x" (uty "s")) A \
-           ptmbody (lamp (varp "x" _) B \ combp B A))
-        (close-term (absp (varp "x" (uty "t"))
-          (combp (varp "x" (uty "t")) (varp "x" (uty "s")))))
+  [ ok-eq [uty "x"] (ptyvars (uty "x") [])
+  , ok-eq [sty 1] (ptyvars (sty 1) [])
+  , ok-eq [sty 3, uty "x"] (ptyvars (ptycon "y" [uty "x", sty 3]) [])
+  , ok-eq (ptyfree (uty "x") A \ (ptybody A))
+          (ptyclose [uty "x"] (uty "x"))
+  , ok-eq (ptyfree (sty 1) A \ ptybody (uty "x"))
+          (ptyclose [sty 1] (uty "x"))
+  , ok-eq (ptyfree (sty 1) A \ ptyfree (uty "x") B \
+             ptybody (ptycon "fun" [B, A]))
+          (close-pretype (ptycon "fun" [uty "x", sty 1]))
+  , ok-eq (lamp (varp "x" _) B \ B)
+          (ptmbind (absp (varp "x" (uty "t")) (varp "x" (uty "t"))))
+  , ( ok-all c \ ok-eq (lamp (varp "x" c) B \ varp "x" (uty "t"))
+        (ptmbind (absp (varp "x" c) (varp "x" (uty "t")))) )
+  , ( ok-ex A \ ok-eq (lamp (varp "x" A) B \ varp "x" (uty "t"))
+        (ptmbind (absp (varp "x" (sty 0)) (varp "x" (uty "t")))) )
+  , ok-eq [varp "y" (sty 1), varp "x" (uty "t")]
+          (ptmvars (combp (varp "x" (uty "t")) (varp "y" (sty 1))) [])
+  , ok-eq (ptmfree (varp "x" (uty "t")) A \ ptmbody A)
+          (close-term (varp "x" (uty "t")))
+  , ok-eq (ptmfree (varp "x" (uty "s")) A \
+             ptmbody (lamp (varp "x" _) B \ combp B A))
+          (close-term (absp (varp "x" (uty "t"))
+            (combp (varp "x" (uty "t")) (varp "x" (uty "s")))))
+  ]
 , section "free-vars"
-, ok-eq [varp "y" (ptycon "" [])]
-        (free-vars (absp (varp "x" (ptycon "" []))
-                      (varp "y" (ptycon "" []))) [])
+  [ ok-eq [varp "y" (ptycon "" [])]
+          (free-vars (absp (varp "x" (ptycon "" []))
+                        (varp "y" (ptycon "" []))) [])
+  ]
 , section "freevars"
-, ok-eq ["y"]
-    (freevars (absp (varp "x" (ptycon "" [])) (varp "y" (ptycon "" []))))
+  [ ok-eq ["y"]
+      (freevars (absp (varp "x" (ptycon "" [])) (varp "y" (ptycon "" []))))
+  ]
 , section "frees"
-, ok-eq [varp "x" @aaty, varp "y" @bbty]
-    (frees (combp (varp "x" @aaty) (varp "y" @bbty)))
-, ok-eq [varp "x" @aaty, varp "x" @bbty]
-    (frees (combp (varp "x" @aaty) (varp "x" @bbty)))
-, ok-eq [varp "x" @aaty]
-    (frees (combp (varp "x" @aaty) (varp "x" @aaty)))
-, ok-eq [varp "y" @aaty]
-    (frees (absp (varp "x" @aaty) (combp (varp "x" @aaty) (varp "y" @aaty))))
-, ok-eq [varp "y" (uty "A")]
-    (frees (absp (varp "x" (uty "A"))
-      (combp (varp "x" (uty "A")) (varp "y" (uty "A")))))
+  [ ok-eq [varp "x" @aaty, varp "y" @bbty]
+      (frees (combp (varp "x" @aaty) (varp "y" @bbty)))
+  , ok-eq [varp "x" @aaty, varp "x" @bbty]
+      (frees (combp (varp "x" @aaty) (varp "x" @bbty)))
+  , ok-eq [varp "x" @aaty]
+      (frees (combp (varp "x" @aaty) (varp "x" @aaty)))
+  , ok-eq [varp "y" @aaty]
+      (frees (absp (varp "x" @aaty) (combp (varp "x" @aaty) (varp "y" @aaty))))
+  , ok-eq [varp "y" (uty "A")]
+      (frees (absp (varp "x" (uty "A"))
+        (combp (varp "x" (uty "A")) (varp "y" (uty "A")))))
+  ]
 , section "has_type"
-, ok (has_type (varp "x" (uty "A")) (uty "A"))
-, ok (has_type (constp "y" (uty "U")) (uty "U"))
-, ok (has_type (combp (constp "f" (ptycon "fun" [uty "A", uty "B"]))
-                      (varp "x" (uty "A")))
-               (uty "B"))
+  [ ok (has_type (varp "x" (uty "A")) (uty "A"))
+  , ok (has_type (constp "y" (uty "U")) (uty "U"))
+  , ok (has_type (combp (constp "f" (ptycon "fun" [uty "A", uty "B"]))
+                        (varp "x" (uty "A")))
+                 (uty "B"))
+  ]
 , section "pmk_forall"
-, ok-eq
-    (combp
-      (constp "!" (@tyfun (@tyfun (uty "A") @tybool) @tybool))
-      (absp (varp "x" (uty "A")) (constp "a" @tybool)))
-    (pmk_forall (varp "x" (uty "A")) (constp "a" @tybool))
-, ok-eq @tybool
-    (has_type
+  [ ok-eq
       (combp
         (constp "!" (@tyfun (@tyfun (uty "A") @tybool) @tybool))
-        (absp (varp "x" (uty "A")) (constp "a" @tybool))))
+        (absp (varp "x" (uty "A")) (constp "a" @tybool)))
+      (pmk_forall (varp "x" (uty "A")) (constp "a" @tybool))
+  , ok-eq @tybool
+      (has_type
+        (combp
+          (constp "!" (@tyfun (@tyfun (uty "A") @tybool) @tybool))
+          (absp (varp "x" (uty "A")) (constp "a" @tybool))))
+  ]
 ].

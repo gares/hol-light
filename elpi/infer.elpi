@@ -171,7 +171,7 @@ macro @id A X :- combp (constp "id" (@tfun A A)) X.
 %% ----------------------------------------------------------------------------
 
 shorten test.{ test, run-tests, run-test, success, failure,
-               ok, ko, okb, kob, ok-eq, section }.
+               ok, ko, okb, kob, ok-eq, assert, section }.
 shorten verbosity.{ quiet, terse, info, verbose, debug, with-verbosity }.
 
 type ok-elaborate preterm -> preterm -> test.
@@ -218,134 +218,152 @@ status
   , overload "z" "v" (ptybody (@tfun @tbool @tind))
   ].
 
-pred infer_test.
-infer_test :- status PP, PP => run-tests
-  [ section "has_type"
-  , ok-eq (@tfun @tbool @tnum)
-      (has_type
-        (@gabs @tbool @tnum
-          (varp "u" (@tfun (@tfun @tbool @tnum) @tbool))))
-  , ok-eq @tbool
-      (has_type (@geq @tbool (varp "x" @tbool) (varp "x" @tbool)))
-  , section "pmk_gabs"
-  , ok-eq
-      (combp
-        (constp "GABS"
-          (@funp [@funp [@tfun @tnum @tnum, @tbool], @tfun @tnum @tnum]))
-        (absp (varp "f" (@tfun @tnum @tnum))
+pred infer_test o:test.
+infer_test T :-
+  status PP,
+  T =
+  assert PP
+  ( section "infer_test"
+    [ section "has_type"
+      [ ok-eq (@tfun @tbool @tnum)
+          (has_type
+            (@gabs @tbool @tnum
+              (varp "u" (@tfun (@tfun @tbool @tnum) @tbool))))
+      , ok-eq @tbool
+          (has_type (@geq @tbool (varp "x" @tbool) (varp "x" @tbool)))
+      ]
+    , section "pmk_gabs"
+      [ ok-eq
           (combp
-            (constp "!" (@funp [@funp [@tnum, @tbool], @tbool]))
-            (absp (varp "m" @tnum)
+            (constp "GABS"
+              (@funp [@funp [@tfun @tnum @tnum, @tbool], @tfun @tnum @tnum]))
+            (absp (varp "f" (@tfun @tnum @tnum))
               (combp
-                (constp "!" (@funp [@funp [@tfun @tnum @tnum, @tbool], @tbool]))
-                (absp (varp "s" (@tfun @tnum @tnum))
+                (constp "!" (@funp [@funp [@tnum, @tbool], @tbool]))
+                (absp (varp "m" @tnum)
                   (combp
-                    (combp
-                      (constp "GEQ" (@funp [@tnum, @funp [@tnum, @tbool]]))
+                    (constp "!"
+                      (@funp [@funp [@tfun @tnum @tnum, @tbool], @tbool]))
+                    (absp (varp "s" (@tfun @tnum @tnum))
                       (combp
-                        (varp "f" (@tfun @tnum @tnum))
-                        (combp (varp "s" (@tfun @tnum @tnum))
-                          (varp "m" @tnum)))) (varp "x" @tnum))))))))
-      (pmk_gabs @tnum @tnum [varp "m" @tnum, varp "s" (@tfun @tnum @tnum)]
-        (combp (varp "s" (@tfun @tnum @tnum))
-               (varp "m" @tnum))
-        (varp "x" @tnum))
-  , section "Elaborate"
-  , ok-elaborate @a (constp "a" @tnum)
-  , ok-elaborate (typing @x @bty) (varp "x" @bty)
-  , ok-elaborate (combp @f @a)
-      (combp (constp "f" (@tfun @tnum @tnum)) (constp "a" @tnum))
-  , ok-elaborate (typing (combp @h @a) @tbool)
-      (combp (varp "h" (@tfun @tnum @tbool)) (constp "a" @tnum))
-  , ok-elaborate (combp @z @a)
-      (combp (varp "u" (@tfun @tnum @tind)) (constp "a" @tnum))
-  , ok-elaborate (combp @z @b)
-      (combp (varp "v" (@tfun @tbool @tind)) (constp "b" @tbool))
-  , ko-elaborate (combp @f @b)
-  , ko-elaborate (combp @a @b)
-  , ok-elaborate (combp @g @a)
-      (combp (constp "g" (@tfun2 @tnum @tbool @tnum)) (constp "a" @tnum))
-  , ko-elaborate (combp @g @b)
-  , ok-elaborate (combp (@i "id") @a) (@id @tnum (constp "a" @tnum))
-  , ok-elaborate (combp (@i "id") @b) (@id @tbool (constp "b" @tbool))
-  , ok-elaborate (combp (@i "id") (typing @x @aty))
-      (@id @aty (varp "x" @aty))
-  , ok-elaborate (@eqvar @a @x) (@eq @tnum (constp "a" @tnum) (varp "x" @tnum))
-  , ok-elaborate (typing (absp @x @x) (@tfun @aty @aty))
-      (absp (varp "x" @aty) (varp "x" @aty))
-  , ok-elaborate (@eqvar (@i "id") (absp @x @a))
-      (@eq (@tfun @tnum @tnum)
-           (constp "id" (@tfun @tnum @tnum))
-           (absp (varp "x" @tnum) (constp "a" @tnum)))
-  , ( ok-eq
-        (combp
-          (constp "GABS"
-            (ptycon "fun"
-              [@funp [(@tfun @tnum @tnum), @tbool],
-               (@tfun @tnum @tnum)]))
-          (absp
-            (varp "f" (@tfun @tnum @tnum))
+                        (combp
+                          (constp "GEQ" (@funp [@tnum, @funp [@tnum, @tbool]]))
+                          (combp
+                            (varp "f" (@tfun @tnum @tnum))
+                            (combp (varp "s" (@tfun @tnum @tnum))
+                              (varp "m" @tnum)))) (varp "x" @tnum))))))))
+          (pmk_gabs @tnum @tnum [varp "m" @tnum, varp "s" (@tfun @tnum @tnum)]
+            (combp (varp "s" (@tfun @tnum @tnum))
+                   (varp "m" @tnum))
+            (varp "x" @tnum))
+      ]
+    , section "Elaborate"
+      [ ok-elaborate @a (constp "a" @tnum)
+      , ok-elaborate (typing @x @bty) (varp "x" @bty)
+      , ok-elaborate (combp @f @a)
+          (combp (constp "f" (@tfun @tnum @tnum)) (constp "a" @tnum))
+      , ok-elaborate (typing (combp @h @a) @tbool)
+          (combp (varp "h" (@tfun @tnum @tbool)) (constp "a" @tnum))
+      , ok-elaborate (combp @z @a)
+          (combp (varp "u" (@tfun @tnum @tind)) (constp "a" @tnum))
+      , ok-elaborate (combp @z @b)
+          (combp (varp "v" (@tfun @tbool @tind)) (constp "b" @tbool))
+      , ko-elaborate (combp @f @b)
+      , ko-elaborate (combp @a @b)
+      , ok-elaborate (combp @g @a)
+          (combp (constp "g" (@tfun2 @tnum @tbool @tnum)) (constp "a" @tnum))
+      , ko-elaborate (combp @g @b)
+      , ok-elaborate (combp (@i "id") @a) (@id @tnum (constp "a" @tnum))
+      , ok-elaborate (combp (@i "id") @b) (@id @tbool (constp "b" @tbool))
+      , ok-elaborate (combp (@i "id") (typing @x @aty))
+          (@id @aty (varp "x" @aty))
+      , ok-elaborate (@eqvar @a @x)
+          (@eq @tnum (constp "a" @tnum) (varp "x" @tnum))
+      , ok-elaborate (typing (absp @x @x) (@tfun @aty @aty))
+          (absp (varp "x" @aty) (varp "x" @aty))
+      , ok-elaborate (@eqvar (@i "id") (absp @x @a))
+          (@eq (@tfun @tnum @tnum)
+               (constp "id" (@tfun @tnum @tnum))
+               (absp (varp "x" @tnum) (constp "a" @tnum)))
+      , ( ok-eq
             (combp
-              (constp "!"
+              (constp "GABS"
                 (ptycon "fun"
-                  [@funp [@tnum, @tbool], @tbool]))
-              (absp (varp "x" @tnum)
+                  [@funp [(@tfun @tnum @tnum), @tbool],
+                   (@tfun @tnum @tnum)]))
+              (absp
+                (varp "f" (@tfun @tnum @tnum))
                 (combp
-                  (combp
-                    (constp "GEQ"
-                      (ptycon "fun"
-                        [@tnum, @funp [@tnum, @tbool]]))
+                  (constp "!"
+                    (ptycon "fun"
+                      [@funp [@tnum, @tbool], @tbool]))
+                  (absp (varp "x" @tnum)
                     (combp
-                      (varp "f" (@tfun @tnum @tnum))
-                      (combp (constp "f" ((@tfun @tnum @tnum)))
-                        (varp "x" @tnum)))) (varp "x" @tnum))))))
-        R \ infer-gabs-clause H,
-            H => elaborate (absp (combp @f @x) @x) R
-    )
-  ].
+                      (combp
+                        (constp "GEQ"
+                          (ptycon "fun"
+                            [@tnum, @funp [@tnum, @tbool]]))
+                        (combp
+                          (varp "f" (@tfun @tnum @tnum))
+                          (combp (constp "f" ((@tfun @tnum @tnum)))
+                            (varp "x" @tnum)))) (varp "x" @tnum))))))
+            R \ infer-gabs-clause H,
+                H => elaborate (absp (combp @f @x) @x) R
+        )
+      ]
+    ]
+  ).
 
 macro @num0 :-
   (combp (constp "NUMERAL" (ptycon "fun" [ptycon "num" [], ptycon "num" []]))
     (constp "_0" (ptycon "num" []))).
 
-pred elaborate_tests.
-elaborate_tests :-
+pred elaborate_tests o:test.
+elaborate_tests T :-
   tiny_env TinyEnv,
-  TinyEnv => run-tests
-  [ section "elaborate"
-  , ok-eq
-      (absp (varp "x" (@funp [@tnum, @tcon "1"]))
-        (combp (varp "y" (@funp [@tcon "1", @tcon "2"])) 
-          (combp (varp "x" (@funp [@tnum, @tcon "1"])) 
-            @num0)))
-      (elaborate (absp (varp "x" (uty "t"))
-        (combp (varp "y" (uty "t"))
-          (combp (varp "x" (uty "t")) (@tvar "0")))))
-  , section "elaborate w/ coercions"
-  , ok-eq
-      (absp (varp "x" (@funp [@treal, @tbool])) 
-        (combp (varp "y" (@funp [@tbool, @tcon "1"])) 
-          (combp (varp "x" (@funp [@treal, @tbool])) 
-            (combp
-              (constp "real_of_num" (@funp [@tnum, @treal])) 
-              @num0))))
-      (elaborate
-        (absp (typing (varp "x" (uty "t")) (@funp [@treal, @tbool]))
-          (combp (varp "y" (uty "t"))
-            (combp (varp "x" (uty "t")) (@tvar "0")))))
-  ],
   small_env SmallEnv,
-  SmallEnv => run-tests
-  [ section "elaborate2"
-  , ok-eq
-      (absp (varp "x" (@funp [ptycon "complex" [], @tbool])) 
-        (combp (varp "x" (@funp [ptycon "complex" [], @tbool])) 
-          (combp
-            (constp "complex_of_real" (@funp [@treal, ptycon "complex" []]))
-            (combp
-              (constp "real_of_num" (@funp [@tnum, @treal])) 
-              @num0))))
-      (elaborate
-        (absp (typing (varp "x" (uty "t")) (@funp [@tcon "complex", @tbool]))
-          (combp (varp "x" (uty "t")) (@tvar "0"))))
+  T =  
+  section "elaborate_tests"
+  [ assert TinyEnv
+    ( section "elaborate"
+      [ ok-eq
+          (absp (varp "x" (@funp [@tnum, @tcon "1"]))
+            (combp (varp "y" (@funp [@tcon "1", @tcon "2"])) 
+              (combp (varp "x" (@funp [@tnum, @tcon "1"])) 
+                @num0)))
+          (elaborate (absp (varp "x" (uty "t"))
+            (combp (varp "y" (uty "t"))
+              (combp (varp "x" (uty "t")) (@tvar "0")))))
+      , section "elaborate w/ coercions"
+        [ ok-eq
+            (absp (varp "x" (@funp [@treal, @tbool])) 
+              (combp (varp "y" (@funp [@tbool, @tcon "1"])) 
+                (combp (varp "x" (@funp [@treal, @tbool])) 
+                  (combp
+                    (constp "real_of_num" (@funp [@tnum, @treal])) 
+                    @num0))))
+            (elaborate
+              (absp (typing (varp "x" (uty "t")) (@funp [@treal, @tbool]))
+                (combp (varp "y" (uty "t"))
+                  (combp (varp "x" (uty "t")) (@tvar "0")))))
+        ]
+      ]
+    )
+  , assert SmallEnv
+    ( section "elaborate2"
+      [ ok-eq
+          (absp (varp "x" (@funp [ptycon "complex" [], @tbool])) 
+            (combp (varp "x" (@funp [ptycon "complex" [], @tbool])) 
+              (combp
+                (constp "complex_of_real"
+                        (@funp [@treal, ptycon "complex" []]))
+                (combp
+                  (constp "real_of_num" (@funp [@tnum, @treal])) 
+                  @num0))))
+          (elaborate
+            (absp (typing (varp "x" (uty "t"))
+                          (@funp [@tcon "complex", @tbool]))
+              (combp (varp "x" (uty "t")) (@tvar "0"))))
+      ]
+    )
   ].

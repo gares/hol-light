@@ -125,7 +125,7 @@ end = struct
     let record_Utv_uvar k state =
       try state, RawData.mkUnifVar (UV2STV.elpi k (State.get UV2STV.uvmap state)) ~args:[] state, []
       with Not_found ->
-        let state, flex = FlexibleData.Elpi.make ~lvl:0 state in
+        let state, flex = FlexibleData.Elpi.make state in
         let state = State.update UV2STV.uvmap state (UV2STV.add flex k) in
         state, RawData.mkUnifVar (UV2STV.elpi k (State.get UV2STV.uvmap state)) ~args:[] state, []
 
@@ -141,7 +141,7 @@ end = struct
                  if s.[0] = '?' && s.[1] != '?' then record_Utv_uvar s state
                  else ok s state
              | _ -> ko));
-        K("ptycon","Type constructor",A(BuiltInData.string,C(BuiltInData.list, N)),
+        K("ptycon","Type constructor",A(BuiltInData.string,C(ContextualConversion.(!>>) BuiltInData.list, N)),
            B (fun s l -> Ptycon(s,l)),
            M (fun ~ok ~ko -> function (Ptycon(s,l)) -> ok s l | _ -> ko ()));
         K("sty","System type variable",A(BuiltInData.int,N),
@@ -151,7 +151,7 @@ end = struct
            BS (fun (k,_) state -> record_uvar_Utv k state),         
            M (fun ~ok ~ko _ -> ko ()))
       ]
-    }
+    } |> ContextualConversion.(!<)
 
   end
 
@@ -197,7 +197,7 @@ end = struct
            B (fun v b -> Absp(v,b)),
            M (fun ~ok ~ko -> function Absp(v,b) -> ok v b | _ -> ko ()));
       ]
-    }
+    }  |> ContextualConversion.(!<)
 
   end
 
@@ -253,7 +253,7 @@ end = struct
             B(fun t p -> Pexists_r(t,p)),
             M(fun ~ok ~ko -> function Pexists_r(t,p) -> ok t p | _ -> ko ()));
         ]
-      }
+      }  |> ContextualConversion.(!<)
 
     let t = t_poly Hol_preterm.t Hol_preterm.t
 
@@ -264,7 +264,7 @@ end = struct
   let () = Quotation.set_default_quotation (fun ~depth st loc txt ->
     let ast = parse_term txt in
     let ast = preterm_of_term ast in
-    let st, t, l = Hol_preterm.t.Conversion.embed ~depth [] RawData.no_constraints st ast in
+    let st, t, l = Hol_preterm.t.Conversion.embed ~depth st ast in
     assert (l = []);
     st, t)
   ;;
@@ -272,14 +272,14 @@ end = struct
   let () = Quotation.register_named_quotation "raw" (fun ~depth st loc txt ->
     let ast, l = parse_preterm (lex (explode txt)) in
     if l <> [] then failwith "Unparsed input in quotation";
-    let st, t, l = Hol_preterm.t.Conversion.embed ~depth [] RawData.no_constraints st ast in
+    let st, t, l = Hol_preterm.t.Conversion.embed ~depth st ast in
     assert (l = []);
     st, t)
   ;;
 
   let () = Quotation.register_named_quotation "" (fun ~depth st loc txt ->
     let ty = parse_type txt in
-    let st, t, l = Hol_pretype.t.Conversion.embed ~depth [] RawData.no_constraints st (pretype_of_type ty) in
+    let st, t, l = Hol_pretype.t.Conversion.embed ~depth st (pretype_of_type ty) in
     assert (l = []);
     st, t)
   ;;
@@ -320,7 +320,7 @@ end = struct
           B (fun s t p -> Hyp(s,t,p)),
           M (fun ~ok ~ko:_ -> function Hyp(s,t,p) -> ok s t p));
       ]
-    }
+    }  |> ContextualConversion.(!<)
 
     let goal = AlgebraicData.declare {
       ty = TyName "goal";
@@ -331,7 +331,7 @@ end = struct
           B (fun h c -> Goal(h,c)),
           M (fun ~ok ~ko:_ -> function Goal(h,c) -> ok h c));
       ]
-    }
+    }  |> ContextualConversion.(!<)
 
     let just = OpaqueData.declare {
       name = "just";
@@ -361,7 +361,7 @@ end = struct
           B JStop,
           M (fun ~ok ~ko -> function JStop -> ok | _ -> ko ())); 
       ]
-    }
+    }  |> ContextualConversion.(!<)
 
     let holg2elpig (hyps,concl) =
       let hyps = List.map (fun (s,thm) ->
@@ -619,10 +619,10 @@ end = struct
     let exe = Compile.link q in
     static_check header q;
     match Execute.once ?max_steps exe with
-    | Execute.Success { assignments = assignments } ->
+    | Execute.Success { assignments = assignments; pp_ctx = pp_ctx } ->
         if not (Data.StrMap.is_empty assignments) then
         Format.printf "Assignments: %a\n"
-          (Data.StrMap.pp Pp.term) assignments
+          (Data.StrMap.pp Pp.(term pp_ctx)) assignments
     | Failure ->
         Format.printf "Failure\n"
     | NoMoreSteps ->

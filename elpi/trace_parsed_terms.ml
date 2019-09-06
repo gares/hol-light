@@ -36,19 +36,22 @@
 type hol_status = {
   hol_type_constants : (string * int) list;
   hol_term_constants : (string * hol_type) list;
-  hol_interface      : (string * (string * hol_type)) list
+  hol_interface      : (string * (string * hol_type)) list;
+  hol_skeletons      : (string * hol_type) list
 };;
 
 let get_hol_status () = {
   hol_term_constants = !the_term_constants;
   hol_type_constants = !the_type_constants;
-  hol_interface      = !the_interface
+  hol_interface      = !the_interface;
+  hol_skeletons      = !the_overload_skeletons
 };;
 
 let set_hol_status s =
-  the_type_constants := s.hol_type_constants;
-  the_term_constants := s.hol_term_constants;
-  the_interface      := s.hol_interface;;
+  the_type_constants     := s.hol_type_constants;
+  the_term_constants     := s.hol_term_constants;
+  the_interface          := s.hol_interface;
+  the_overload_skeletons := s.hol_skeletons;;
 
 (* ------------------------------------------------------------------------- *)
 (* Store parsed terms.                                                       *)
@@ -56,20 +59,17 @@ let set_hol_status s =
 
 let trace_parsed_terms = ref false;;
 
-(* (s, ptm, tm, ctms, itf) *)
-(* s = String of the concrete representation of the term; *)
-(* ptm = preterm term obtained by the HOL parser; *)
-(* tm = term obtained by the HOL parser; *)
-(* ctms = constants; *)
-(* ctys = type constants; *)
-(* ift = interface; *)
-let parsed_terms :
-      (string * preterm * term * hol_status) list ref =
+(* (str, ptm, tm, st) *)
+(* str = string of the concrete representation of the term *)
+(* ptm = preterm term obtained by the HOL parser *)
+(* tm  = term obtained by the HOL parser *)
+(* st  = status *)
+let parsed_terms : (string * preterm * term * hol_status) list ref =
   ref [];;
 
 let register_parsed_term str ptm tm =
-  parsed_terms :=
-    (str,ptm,tm,get_hol_status()) :: !parsed_terms;;
+  let st = get_hol_status() in
+  parsed_terms := (str,ptm,tm,st) :: !parsed_terms;;
 
 (* ------------------------------------------------------------------------- *)
 (* Variant of parse_term for tracing all terms parsed.                       *)
@@ -110,8 +110,7 @@ let save_parsed_terms pathfile
   Marshal.to_channel oc ptml [];
   close_out oc;;
 
-let load_parsed_terms pathfile :
-      (string * preterm * term * hol_status) list =
+let load_parsed_terms pathfile : (string * preterm * term * hol_status) list =
   let ic = open_in pathfile in
   Marshal.from_channel ic;;
 
@@ -162,10 +161,10 @@ let contains_gabs tm =
 (*
 Gc.compact();;
 length !parsed_terms;;
-(* val it : int = 9746 *)
+(* val it : int = 9751 *)
 parsed_terms := setify !parsed_terms;;
 length !parsed_terms;;
-(* val it : int = 4696 *)
+(* val it : int = 4701 *)
 
 let pathfile = "elpi/CORE.bin";;
 save_parsed_terms pathfile !parsed_terms;;

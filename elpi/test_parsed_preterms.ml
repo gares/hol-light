@@ -4,10 +4,11 @@
 
 (* Quick hack to compare terms upto renaming in type variables. *)
 let term_eq tm1 tm2 =
-  let (e,vinst,tinst) = term_match [] tm1 tm2 in
-  e = [] &&
-  forall (is_var o fst) vinst &&
-  forall (is_vartype o fst) tinst;;
+  try let (e,vinst,tinst) = term_match [] tm1 tm2 in
+      e = [] &&
+      forall (is_var o fst) vinst &&
+      forall (is_vartype o fst) tinst
+  with Failure _ -> false;;
 
 (* Variant of the above. *)
 (*

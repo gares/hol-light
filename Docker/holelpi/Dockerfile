@@ -14,12 +14,12 @@
 ###
 ### To build the container:
 ###
-###   $ docker build --target holelpi -t holelpi Docker
+###   $ docker build -t holelpi holelpi
 ###
 ### or, use options --pull --no-cache if you want to refresh the
 ### downloaded or cached layers:
 ###
-###   $ docker build --pull --no-cache --target holelpi -t holelpi Docker
+###   $ docker build --pull --no-cache -t holelpi holelpi
 ###
 ### To start the container:
 ###

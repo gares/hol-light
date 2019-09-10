@@ -1,4 +1,11 @@
+%%% ===========================================================================
+%%% Wrap HOL Light primitives.
+%%% ===========================================================================
 
+skeleton S A :-
+  hol.skeleton S K,
+  close-pretype K C,
+  refresh-cpretype C A.
 
 overload S S1 CT :-
   hol.interface S L,

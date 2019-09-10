@@ -1034,6 +1034,11 @@ external pred hol.env % lookup the type of known constant
   o:pretype.
    % constant type
   
+external pred hol.skeleton % lookup the list of skeletons of overloaded constants
+  i:string, % constant overloaded name
+  o:pretype.
+   % skeleton type
+  
 external pred hol.interface % lookup the interpretations of overloaded constant
   i:string, % constant overloaded name
   o:list (pair string pretype).

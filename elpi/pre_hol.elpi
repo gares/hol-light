@@ -154,8 +154,9 @@ macro @bbty :- uty "B".
 %%         (varp S _) into (constp S T)
 %% ----------------------------------------------------------------------------
 
-pred overload i:string, o:string, o:cpretype. % env S S1 T resolve S as S1 : T
-pred env i:string, o:string, o:cpretype. % env S S1 T resolve S as S1 : T
+pred skeleton i:string, o:pretype. % Generic type of overloaded constants
+pred overload i:string, o:string, o:cpretype. % overload S as S1 : T
+pred env i:string, o:string, o:cpretype. % resolve S as S : T
 pred numeral i:string, o:preterm.
 
 pred ptmbind i:preterm, o:preterm.

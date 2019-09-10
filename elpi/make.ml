@@ -425,9 +425,17 @@ end = struct
       DocNext);
 
       (* TODO:
-        - export the_overloaded_skeleton (NO! serve per evitare backtracking)
         - get_var_type (poco usato, per studenti?) *)
 
+      MLCode (Pred("hol.skeleton",
+        In(BuiltInData.string,"constant overloaded name",
+        Out(Hol_pretype.t,"skeleton type",
+        Easy "lookup the list of skeletons of overloaded constants")),
+      (fun name _ ~depth ->
+         try let ty = assoc name !the_overload_skeletons in
+             !: (pretype_of_type2 ty)
+         with Failure _ -> raise No_clause)),
+      DocNext);
 
       MLCode (Pred("hol.interface",
         In(BuiltInData.string,"constant overloaded name",

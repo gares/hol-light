@@ -3,12 +3,34 @@
 %%% ===========================================================================
 
 %% ----------------------------------------------------------------------------
-%% Load elpi files.
+%% Load Elpi files that do no not depend on HOL.
 %% ----------------------------------------------------------------------------
 
 accumulate verbosity.
 accumulate test.
 accumulate pre_hol.
+
+%% ----------------------------------------------------------------------------
+%% Bogus definitions.
+%% ----------------------------------------------------------------------------
+
+% Bogus definition for predicate numeral.
+numeral "0"
+  (combp (constp "NUMERAL" (ptycon "fun" [ptycon "num" [], ptycon "num" []]))
+    (constp "_0" (ptycon "num" []))).
+
+pred hol.interface % lookup the interpretations of overloaded constant
+  i:string, % constant overloaded name
+  o:list (pair string pretype).
+
+hol.interface "<=>"
+  [pr "="
+      (ptycon "fun" [uty "A",ptycon "fun" [uty "A",ptycon "bool" []]]) ].
+
+%% ----------------------------------------------------------------------------
+%% Load more Elpi files.
+%% ----------------------------------------------------------------------------
+
 accumulate elab.
 accumulate infer.
 
@@ -18,11 +40,6 @@ accumulate infer.
 
 shorten verbosity.{ quiet, terse, info, verbose, debug, with-verbosity }.
 shorten test.{ run-tests }.
-
-% Bogus definition for predicate numeral.
-numeral "0"
-  (combp (constp "NUMERAL" (ptycon "fun" [ptycon "num" [], ptycon "num" []]))
-    (constp "_0" (ptycon "num" []))).
 
 main :-
   with-verbosity terse (run-tests

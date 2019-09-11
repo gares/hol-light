@@ -159,6 +159,16 @@ pred overload i:string, o:string, o:cpretype. % overload S as S1 : T
 pred env i:string, o:string, o:cpretype. % resolve S as S : T
 pred numeral i:string, o:preterm.
 
+%%% Generic type associated to a possibly overloaded indentifier.
+pred generic-type i:string, o:pretype.
+generic-type S A :- hol.interface S L, generic-type.aux S L A.
+
+pred generic-type.aux i:string, i:list (pair string pretype), o:pretype.
+generic-type.aux S [] A       :- env S _ C, refresh-cpretype C A.
+% generic-type.aux S [_,_,|_] A :- skeleton S A.
+generic-type.aux _ [_,_,|_] _ :- !.
+generic-type.aux _ [pr _ K] A :- close-pretype K C, refresh-cpretype C A.
+
 pred ptmbind i:preterm, o:preterm.
 
 ptmbind T1 T2 :-
@@ -170,10 +180,10 @@ ptmbind T1 T2 :-
      ptmcopy (absp (typing (varp S _ as V) VT) T) (lamp (varp S VT) B) :- !,
         pi v \ (ptmcopy V v :- !) => ptmcopy T (B v))
   =>
-  (pi S TY\ 
+  (pi S TY\
      ptmcopy (varp S TY) (constp S TY) :- (env S _ _; overload S _ _), !)
   =>
-  (pi S N\ 
+  (pi S N\
      ptmcopy (varp S _) N :- numeral S N, !)
   =>
   ptmcopy T1 T2.
@@ -242,10 +252,7 @@ free-vars (absp (typing (varp _ _ as V) _) T) L L1 :-
 
 % Alternative version that works with GABS.
 pred freevars i:preterm, o:list string.
-freevars (varp S TY) Vs  :-
-  overload S S1 _, !,
-  (overload _ _ _ :- !, fail) => freevars (varp S1 TY) Vs.
-freevars (varp S _) [] :- (env S _ _ ; numeral S _), !.
+freevars (varp S _) [] :- (numeral S _N; generic-type S _X), !.
 freevars (varp S _) [S].
 freevars (typing X _) Vs :- freevars X Vs.
 freevars (combp X Y) Vs :- union {freevars X} {freevars Y} Vs.

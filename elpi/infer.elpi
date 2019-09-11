@@ -5,6 +5,15 @@
 %%% ===========================================================================
 
 %% ----------------------------------------------------------------------------
+%% Variable name convention:
+%% A, B, C pretypes;
+%%       D dummy pretype;
+%%       V preterm variable;
+%% X, Y, F arbitrary preterm;
+%%       S string (name of a variable or a constant).
+%% ----------------------------------------------------------------------------
+
+%% ----------------------------------------------------------------------------
 %% Handy macros for building pretypes and preterms.
 %% ----------------------------------------------------------------------------
 
@@ -28,108 +37,80 @@ macro @tbinop Op X Y :- combp (combp Op X) Y.
 %% ----------------------------------------------------------------------------
 
 pred elaborate i:preterm, o:preterm.
-elaborate X Y :- infer X Y _A true.
+elaborate X Y :-
+  freevars X Vs,
+  std.map Vs build-fvar-clause P,
+  P => ((coercions [] :- !) => infer X Y _).
+
+pred build-fvar-clause i:string, o:prop.
+build-fvar-clause S
+  (pi X A \ infer (varp S _) X A :- !, X = varp S A1, A = A1).
 
 %% ----------------------------------------------------------------------------
 %% Main inference predicate.
 %%
-%%   infer X Y A K.
+%%   infer X Y A.
 %%
 %% Where:
 %%   X = input (parsed) term;
 %%   Y = output (inferred) term;
-%%   A = inferred type;
-%%   K = continuation.
+%%   A = inferred type (type of Y).
 %% ----------------------------------------------------------------------------
 
-pred infer i:preterm, o:preterm, o:pretype, i:prop.
-
-%% ----------------------------------------------------------------------------
-%% Variable name convention:
-%% A, B, C pretypes;
-%%       D dummy pretype;
-%%       V preterm variable;
-%%    X, F arbitrary preterms;
-%%       S string (name of variable or constant).
-%% ----------------------------------------------------------------------------
+pred infer i:preterm, o:preterm, o:pretype.
 
 %%% Variables.
 
-infer (varp S _) X A K :-
-    vinfer S X A,
-    if (X = varp _ _)
-       ((vinfer-free S X A :- !) => K)
-       K.
+infer (varp S _) N @tnum :- numeral S N, !.
+infer (varp S _) X A :- hol.interface S L, infer.overload S L X A.
+
+pred infer.overload i:string, i:list(pair string pretype), o:preterm, o:pretype.
+infer.overload S [] (constp S A) A :- env S _ C, !, refresh-cpretype C A.
+infer.overload S [] (varp S A) A :- skeleton S A, !.
+infer.overload _ [pr S1 K] X A :- !,
+  close-pretype K C,
+  refresh-cpretype C A,
+  infer.env S1 X A.
+infer.overload _ ((_ :: _ :: _) as L) X A :-
+  std.mem L (pr S1 K),
+  close-pretype K C,
+  refresh-cpretype C A,
+  infer.env S1 X A.
+
+pred infer.env i:string, o:preterm, o:pretype.
+infer.env S (constp S A) A :- env S _ C, !, refresh-cpretype C A.
+infer.env S (varp   S A) A.
 
 %%% Combinations.
 
-% infer (combp F X) (combp F1 X1) B K :-
-%   infer F F1 (@tfun A B) (infer X X1 A K).
-infer (combp F X) (combp F1 X1) B K :-
-  infer F F1 (@tfun A B) (infer-coerce X X1 A K).
+infer (combp F X) (combp F1 X1) B :-
+  infer F F1 (@tfun A B),
+  infer X X1 A.
+  %% Version with coercions.
+  %% TODO: Diverges in some cases.  Why?
+  % infer F F1 (@tfun A B),
+  % (infer X X1 A; infer-coerce X X1 A).
 
 %%% Abstractions.
+%%% NB: the HOL function `term_of_preterm` takes care of
+%%% returning a generalized abstraction when needed.
 
-infer (absp (varp S _) X) (absp (varp S A) X1) (@tfun A B) K :-
-  !,
-  ((vinfer-free S (varp S A) A :- !) => infer X X1 B true),
-  K.
+infer (absp X Y) (absp X1 Y1) (@tfun A B) :-
+  freevars X Us,
+  std.map Us build-fvar-clause P,
+  P => (infer X X1 A, infer Y Y1 B).
 
-macro @geq A X Y :- @tbinop (constp "GEQ" (@tfun2 A A @tbool)) X Y.
-macro @gabs A B X :-
-  combp (constp "GABS" (@tfun (@tfun (@tfun A B) @tbool) (@tfun A B))) X.
-
-%%% Generalized abstractions.
-%%% Simplified version: concrete syntax of generalized abstraction is
-%%% delegated to the HOL library function term_of_preterm.
-infer (absp X Y) (absp X1 Y1) (@tfun A B) K :-
-  infer X X1 A true,
-  frees X1 Vs,
-  (vinfer-free S (varp S A) A :- std.mem! Vs (varp S A), !)
-  => infer Y Y1 B true,
-  K.
-
-%%% Type annotations.
-
-% infer (typing X A) X1 A K :- infer X X1 A K.
-infer (typing X A) X1 A K :- infer-coerce X X1 A K.
-
-pred infer-coerce i:preterm, o:preterm, o:pretype, i:prop.
-infer-coerce X Y A K :-
-  infer X Z B K,
-  trans-coercion B A Z Y.
-
-%%% Free variables.
-
-pred vinfer-free i:string, o:preterm, o:pretype.
-
-%%% Overloading.
-
-pred vinfer i:string, o:preterm, o:pretype.
-vinfer S N @tnum :- numeral S N, !.
-vinfer S V A :- vinfer-free S V A, !.
-vinfer S X A :-
-  overload S S1 C, refresh-cpretype C A, cinfer S1 X A
-  ;
-  not (overload S _ _), cinfer S X A.
-
-%%% Constants.
-
-pred cinfer i:string, o:preterm, o:pretype.
-cinfer S (constp S A) A :- env S _ C, !, refresh-cpretype C A.
-cinfer S (varp S A) A.
-
-%%% Version that produces the concrete form of the generalized abstraction.
+%%% Clause that produces the concrete form of the generalized abstraction.
+%%% This predicate and the next two are not used now.
 pred infer-gabs-clause o:prop.
 infer-gabs-clause
-  (pi X Y Z A B K X1 Y1 Vs \
-    infer (absp X Y) Z (@tfun A B) K :-
-      infer X X1 A true,
-      frees X1 Vs,
-      (pi S A \ vinfer-free S (varp S A) A :- std.mem! Vs (varp S A), !)
-      => infer Y Y1 B true,
-      pmk_gabs A B Vs X1 Y1 Z,
-      K).
+  ( pi X Y Z A B X1 Y1 Us Vs \
+      infer (absp X Y) Z (@tfun A B) :-
+        freevars X Us,
+        std.map Us build-fvar-clause P,
+        P => std.map Us var-of-string Vs,
+        P => (infer X X1 A, infer Y Y1 B, pmk_gabs A B Vs X1 Y1 Z)
+  ).
 
 pred pmk_gabs i:pretype, i:pretype, i:list preterm,
               i:preterm, i:preterm, o:preterm.
@@ -137,6 +118,26 @@ pmk_gabs _ _ _ (varp _ _ as V) X (absp V X) :- !.
 pmk_gabs A B Vs X Y (@gabs A B (absp F Z)) :-
   F = varp "f" (@tfun A B),
   list_pmk_forall Vs (@geq B (combp F X) Y) Z.
+
+pred var-of-string i:string, o:preterm.
+var-of-string S X :- infer (varp S (ptycon "" [])) X _.
+
+macro @geq A X Y :- @tbinop (constp "GEQ" (@tfun2 A A @tbool)) X Y.
+macro @gabs A B X :-
+  combp (constp "GABS" (@tfun (@tfun (@tfun A B) @tbool) (@tfun A B))) X.
+
+%%% Type annotations.
+
+infer (typing X A) X1 A :-
+  infer X X1 A.
+  %% Version with coercions.
+  %% TODO: Diverges in some cases.  Why?
+  % (infer X X1 A; infer-coerce X X1 A).
+
+pred infer-coerce i:preterm, o:preterm, o:pretype.
+infer-coerce X Y A :-
+  infer X Z A1,
+  trans-coercion A1 A Z Y.
 
 %% ----------------------------------------------------------------------------
 %% Further macros.
@@ -171,15 +172,18 @@ macro @id A X :- combp (constp "id" (@tfun A A)) X.
 %% ----------------------------------------------------------------------------
 
 shorten test.{ test, run-tests, run-test, success, failure,
-               ok, ko, okb, kob, ok-eq, assert, section }.
+               ok, ko, ok-all, ok-ex, okb, kob, ok-eq, assert, section }.
 shorten verbosity.{ quiet, terse, info, verbose, debug, with-verbosity }.
 
 type ok-elaborate preterm -> preterm -> test.
 type ko-elaborate preterm -> test.
 
 run-test (ok-elaborate X Y) Ret :-
-  infer X Z A true, !,
-  if (Y == Z)
+  freevars X Vs, !,
+  std.map Vs build-fvar-clause P,
+  P => ((coercions [] :- !) => infer X Z A; infer X Z A),
+  !,
+  if (Y = Z) % TODO: Implement a more clever comparison.
     (
       if (has_type Z A1)
         (
@@ -206,6 +210,17 @@ run-test (ko-elaborate _) (success "").
 %% Tests.
 %% ----------------------------------------------------------------------------
 
+pred interface.bogus i:string, o:list(pair string pretype).
+interface.bogus "<=>" [ pr "=" ( @tfun (uty "A") (@tfun (uty "A") @tbool) ) ].
+interface.bogus "z"
+  [ pr "u" (@tfun @tnum @tind)
+  , pr "v" (@tfun @tbool @tind)
+  ] :- !.
+interface.bogus _ [].
+
+pred skeleton.bogus i:string, o:cpretype.
+skeleton.bogus "z" (ptyfree (uty "A") A \ ptybody (@tfun A @tind)).
+
 pred status o:list prop.
 status
   [ env "a" "a" (ptybody @tnum)
@@ -214,8 +229,11 @@ status
   , env "g" "g" (ptybody (@tfun2 @tnum @tbool @tnum))
   , env "id" "id" (ptyfree @aty A \ ptybody (@tfun A A))
   , env "eq" "eq" (ptyfree @aty A \ ptybody (@tfun2 A A @tbool))
+  , env "=" "=" (ptyfree @aty A \ ptybody (@tfun2 A A @tbool))
   , overload "z" "u" (ptybody (@tfun @tnum @tind))
   , overload "z" "v" (ptybody (@tfun @tbool @tind))
+  , ( pi S L \ hol.interface S L :- interface.bogus S L )
+  , ( pi S C \ skeleton S A :- skeleton.bogus S C, refresh-cpretype C A )
   ].
 
 pred infer_test o:test.
@@ -281,6 +299,11 @@ infer_test T :-
           (@eq @tnum (constp "a" @tnum) (varp "x" @tnum))
       , ok-elaborate (typing (absp @x @x) (@tfun @aty @aty))
           (absp (varp "x" @aty) (varp "x" @aty))
+      , ok-elaborate
+          (combp (varp "<=>" (ptycon "" []))
+            (varp "x" (ptycon "" [])))
+          (combp (constp "=" (@tfun @tbool (@tfun @tbool @tbool)))
+            (varp "x" @tbool))
       , ok-elaborate (@eqvar (@i "id") (absp @x @a))
           (@eq (@tfun @tnum @tnum)
                (constp "id" (@tfun @tnum @tnum))
@@ -322,25 +345,25 @@ pred elaborate_tests o:test.
 elaborate_tests T :-
   tiny_env TinyEnv,
   small_env SmallEnv,
-  T =  
+  T =
   section "elaborate_tests"
   [ assert TinyEnv
     ( section "elaborate"
       [ ok-eq
           (absp (varp "x" (@funp [@tnum, @tcon "1"]))
-            (combp (varp "y" (@funp [@tcon "1", @tcon "2"])) 
-              (combp (varp "x" (@funp [@tnum, @tcon "1"])) 
+            (combp (varp "y" (@funp [@tcon "1", @tcon "2"]))
+              (combp (varp "x" (@funp [@tnum, @tcon "1"]))
                 @num0)))
           (elaborate (absp (varp "x" (uty "t"))
             (combp (varp "y" (uty "t"))
               (combp (varp "x" (uty "t")) (@tvar "0")))))
       , section "elaborate w/ coercions"
         [ ok-eq
-            (absp (varp "x" (@funp [@treal, @tbool])) 
-              (combp (varp "y" (@funp [@tbool, @tcon "1"])) 
-                (combp (varp "x" (@funp [@treal, @tbool])) 
+            (absp (varp "x" (@funp [@treal, @tbool]))
+              (combp (varp "y" (@funp [@tbool, @tcon "1"]))
+                (combp (varp "x" (@funp [@treal, @tbool]))
                   (combp
-                    (constp "real_of_num" (@funp [@tnum, @treal])) 
+                    (constp "real_of_num" (@funp [@tnum, @treal]))
                     @num0))))
             (elaborate
               (absp (typing (varp "x" (uty "t")) (@funp [@treal, @tbool]))
@@ -352,13 +375,13 @@ elaborate_tests T :-
   , assert SmallEnv
     ( section "elaborate2"
       [ ok-eq
-          (absp (varp "x" (@funp [ptycon "complex" [], @tbool])) 
-            (combp (varp "x" (@funp [ptycon "complex" [], @tbool])) 
+          (absp (varp "x" (@funp [ptycon "complex" [], @tbool]))
+            (combp (varp "x" (@funp [ptycon "complex" [], @tbool]))
               (combp
                 (constp "complex_of_real"
                         (@funp [@treal, ptycon "complex" []]))
                 (combp
-                  (constp "real_of_num" (@funp [@tnum, @treal])) 
+                  (constp "real_of_num" (@funp [@tnum, @treal]))
                   @num0))))
           (elaborate
             (absp (typing (varp "x" (uty "t"))

@@ -47,9 +47,10 @@ elab T R :-
    (
     % we try with no coercions
     ((coercions [] :- !) => of T TY R)
-     ;
-    % we try again with coercions
-    (of T TY R)
+    %%% TODO: With coercions diverges in some cases.
+    %  ;
+    % % we try again with coercions
+    % (of T TY R)
    )
   ),
   when-verbosity debug (print VS "|-" T "\n-e->\n" R ":" TY).
@@ -57,7 +58,7 @@ elab T R :-
 pred build-clause-fv i:string, o:prop.
 
 build-clause-fv S (of (varp S _) Ty (varp S Ty) :- !).
- 
+
 %% ----------------------------------------------------------------------------
 %% typing
 %% ----------------------------------------------------------------------------
@@ -99,7 +100,7 @@ of-coerce A T R :-
   /*report-all-failures-if-no-success*/ (
   of A T1 R1,
   (
-    (trans-coercion T1 T R1 R) 
+    (trans-coercion T1 T R1 R)
   /*
     ( Msg is "error"/*"The term\n\t" ^ {hol.term->string R1} ^
              "\nhas type\n\t" ^ {hol.ty->string T1} ^
@@ -189,19 +190,19 @@ elab_tests T :-
       , section "elab"
         [ ok-eq
             (absp (varp "x" (@fun [@num, @con "1"]))
-              (combp (varp "y" (@fun [@con "1", @con "2"])) 
-                (combp (varp "x" (@fun [@num, @con "1"])) 
+              (combp (varp "y" (@fun [@con "1", @con "2"]))
+                (combp (varp "x" (@fun [@num, @con "1"]))
                   @tm0)))
             (elab (absp (varp "x" (uty "t"))
               (combp (varp "y" (uty "t"))
                 (combp (varp "x" (uty "t")) (@var "0")))))
         , section "elab w/ coercions"
           [ ok-eq
-              (absp (varp "x" (@fun [@real, @bool])) 
-                (combp (varp "y" (@fun [@bool, @con "1"])) 
-                  (combp (varp "x" (@fun [@real, @bool])) 
+              (absp (varp "x" (@fun [@real, @bool]))
+                (combp (varp "y" (@fun [@bool, @con "1"]))
+                  (combp (varp "x" (@fun [@real, @bool]))
                     (combp
-                      (constp "real_of_num" (@fun [@num, @real])) 
+                      (constp "real_of_num" (@fun [@num, @real]))
                       @tm0))))
               (elab
                 (absp (typing (varp "x" (uty "t")) (@fun [@real, @bool]))
@@ -214,12 +215,12 @@ elab_tests T :-
   , assert SmallEnv
     ( section "SmallEnv"
       [ ok-eq
-          (absp (varp "x" (@fun [ptycon "complex" [], @bool])) 
-            (combp (varp "x" (@fun [ptycon "complex" [], @bool])) 
+          (absp (varp "x" (@fun [ptycon "complex" [], @bool]))
+            (combp (varp "x" (@fun [ptycon "complex" [], @bool]))
               (combp
                 (constp "complex_of_real" (@fun [@real, ptycon "complex" []]))
                 (combp
-                  (constp "real_of_num" (@fun [@num, @real])) 
+                  (constp "real_of_num" (@fun [@num, @real]))
                   @tm0))))
           (elab
             (absp (typing (varp "x" (uty "t")) (@fun [@con "complex", @bool]))

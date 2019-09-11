@@ -1,0 +1,42 @@
+%%% ===========================================================================
+%%% Bogus declarations of HOL predicates.
+%%% Handy for testing Elpi code independently of HOL.
+%%% ===========================================================================
+
+%% ----------------------------------------------------------------------------
+%% Bogus definition for predicate numeral.
+%% ----------------------------------------------------------------------------
+
+numeral "0"
+  (combp (constp "NUMERAL" (ptycon "fun" [ptycon "num" [], ptycon "num" []]))
+    (constp "_0" (ptycon "num" []))).
+
+numeral "1"
+  (combp (constp "NUMERAL" (ptycon "fun" [ptycon "num" [], ptycon "num" []]))
+    (combp (constp "BIT1" (ptycon "fun" [ptycon "num" [], ptycon "num" []]))
+      (constp "_0" (ptycon "num" [])))).
+
+numeral "2"
+  (combp (constp "NUMERAL" (ptycon "fun" [ptycon "num" [], ptycon "num" []]))
+    (combp (constp "BIT0" (ptycon "fun" [ptycon "num" [], ptycon "num" []]))
+      (combp (constp "BIT1" (ptycon "fun" [ptycon "num" [], ptycon "num" []]))
+        (constp "_0" (ptycon "num" []))))).
+
+numeral "3"
+  (combp (constp "NUMERAL" (ptycon "fun" [ptycon "num" [], ptycon "num" []]))
+    (combp (constp "BIT1" (ptycon "fun" [ptycon "num" [], ptycon "num" []]))
+      (combp (constp "BIT1" (ptycon "fun" [ptycon "num" [], ptycon "num" []]))
+        (constp "_0" (ptycon "num" []))))).
+
+%% ----------------------------------------------------------------------------
+%% Bogus definition for predicate hol.interface.
+%% ----------------------------------------------------------------------------
+
+% Copy of the declaration found in hol-builtin.elpi
+pred hol.interface % lookup the interpretations of overloaded constant
+  i:string, % constant overloaded name
+  o:list (pair string pretype).
+
+% Override symbol "<=>".
+hol.interface "<=>"
+  [ pr "=" (ptycon "fun" [uty "A",ptycon "fun" [uty "A",ptycon "bool" []]]) ].

@@ -72,6 +72,11 @@ let load_on_path p s =
   let fileid = (Filename.basename s',Digest.file s') in
   (use_file s'; loaded_files := fileid::(!loaded_files));;
 
+let mark_as_loaeded_on_path s =
+  let s' = file_on_path (!load_path) s in
+  let fileid = (Filename.basename s',Digest.file s') in
+  loaded_files := fileid::(!loaded_files);;
+
 let loads s = load_on_path ["$"] s;;
 
 let loadt s = load_on_path (!load_path) s;;
@@ -93,7 +98,8 @@ loads "lib.ml";;        (* Various useful general library functions          *)
 (* The logical core.                                                         *)
 (* ------------------------------------------------------------------------- *)
 
-loads "fusion.ml";;
+loads "fusion_test.ml";;
+mark_as_loaeded_on_path "fusion.ml";;
 
 (* ------------------------------------------------------------------------- *)
 (* Some extra support stuff needed outside the core.                         *)

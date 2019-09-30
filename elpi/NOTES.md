@@ -11,10 +11,18 @@
    ```
    rlwrap ocaml -I `camlp5 -where` `camlp5 -where`/gramlib.cma
    ```
-3. Load hol and save the status:
+3. Load HOL and save the status:
    ```
-   #use "make.ml";;
+   #use "hol.ml";;
    let () = save_parsed_terms "elpi/CORE.bin" !parsed_terms;;
+   ```
+   or
+   ```
+   #use "hol_test.ml";;
+   let pterms = load_parsed_terms "elpi/CORE.bin";;
+   length pterms;;
+   let ko_terms = filter_progress term_elab_neq pterms;;
+   length ko_terms;;
    ```
 4. Load the Elpi extension:
    ```

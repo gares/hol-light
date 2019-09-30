@@ -1,29 +1,8 @@
-(* ------------------------------------------------------------------------- *)
-(* Helper functions.                                                         *)
-(* ------------------------------------------------------------------------- *)
-
-(* Quick hack to compare terms upto renaming in type variables. *)
-let term_eq tm1 tm2 =
-  try let (e,vinst,tinst) = term_match [] tm1 tm2 in
-      e = [] &&
-      forall (is_var o fst) vinst &&
-      forall (is_vartype o fst) tinst
-  with Failure _ -> false;;
+loads "elpi/test_elaborator.ml";;
 
 (* ------------------------------------------------------------------------- *)
 (* Setup.                                                                    *)
 (* ------------------------------------------------------------------------- *)
-
-type_invention_warning := false;;
-unreserve_words ["^"];; (* "^" is used for antiquotation *)
-
-(* Load the program *)
-let prg = ref (Hol_elpi.hol());;
-
-(* Run the query. *)
-let elaborate (ptm : preterm) : term =
-  let ptm = Hol_elpi.elaborate_preterm_with !prg ptm in
-  term_of_preterm ptm;;
 
 (* Use one of the following. *)
 let pterms = load_parsed_terms "elpi/CORE.bin";;
@@ -33,13 +12,6 @@ let pterms = load_parsed_terms "elpi/HYPERCOMPLEX.bin";;
 
 (* Number of terms. *)
 length pterms;;
-
-(* Returns true if the elaborator fails or returns a different term. *)
-let term_elab_neq (_,ptm,tm,st) =
-  set_hol_status st;
-  try let qtm = elaborate ptm in
-      not (term_eq tm qtm)
-  with Failure _ -> true;;
 
 let ko_terms = filter_progress term_elab_neq pterms;;
 length ko_terms;;

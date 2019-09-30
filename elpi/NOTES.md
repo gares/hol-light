@@ -14,7 +14,7 @@
 3. Load hol and save the status:
    ```
    #use "make.ml";;
-   let core_st = get_hol_status();;
+   let () = save_parsed_terms "elpi/CORE.bin" !parsed_terms;;
    ```
 4. Load the Elpi extension:
    ```
@@ -45,7 +45,7 @@
    ```
 3. Pick a term:
    ```
-   let stm,ptm,st = el 2 pterms;;
+   let str,stm,ptm,st = el 2 pterms;;
    ```
 4. Run the elaborator on the string:
    ```

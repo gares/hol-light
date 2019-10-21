@@ -296,6 +296,26 @@ has_type (absp (varp _ A) X) (@tyfun A B) :- has_type X B.
 has_type (typing X A) A :- has_type X A.
 
 %%% ---------------------------------------------------------------------------
+%%% Coercions.
+%%% ---------------------------------------------------------------------------
+
+kind coercion type.
+type coercion string -> cpretype -> coercion.
+
+pred coercions o:list coercion. % DB
+
+pred trans-coercion o:pretype, o:pretype, o:preterm, o:preterm.
+trans-coercion X X1 T T :- X == X1, !.
+trans-coercion X X T T.
+trans-coercion A B T R1 :-
+  coercions Coercions,
+  %print "looking for a coercion" A "->" B "for" T,
+  std.mem Coercions (coercion S TS),
+  %print "attempt" S ":" TS,
+  refresh-cpretype TS (@fun [A, A1]),
+  trans-coercion A1 B (combp (constp S (@fun [A, A1])) T) R1.
+
+%%% ---------------------------------------------------------------------------
 %%% Tests.
 %%% ---------------------------------------------------------------------------
 

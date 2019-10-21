@@ -312,8 +312,8 @@ trans-coercion A B T R1 :-
   %print "looking for a coercion" A "->" B "for" T,
   std.mem Coercions (coercion S TS),
   %print "attempt" S ":" TS,
-  refresh-cpretype TS (@fun [A, A1]),
-  trans-coercion A1 B (combp (constp S (@fun [A, A1])) T) R1.
+  refresh-cpretype TS (ptycon "fun" [A, A1]),
+  trans-coercion A1 B (combp (constp S (ptycon "fun" [A, A1])) T) R1.
 
 %%% ---------------------------------------------------------------------------
 %%% Tests.

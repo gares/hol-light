@@ -172,7 +172,7 @@ macro @id A X :- combp (constp "id" (@tfun A A)) X.
 %% ----------------------------------------------------------------------------
 
 shorten test.{ test, run-tests, run-test, success, failure,
-               ok, ko, ok-all, ok-ex, okb, kob, ok-eq, assert, section }.
+               skip, ok, ko, ok-all, ok-ex, okb, kob, ok-eq, assert, section }.
 shorten verbosity.{ quiet, terse, info, verbose, debug, with-verbosity }.
 
 type ok-elaborate preterm -> preterm -> test.
@@ -357,7 +357,8 @@ elaborate_tests T :-
           (elaborate (absp (varp "x" (uty "t"))
             (combp (varp "y" (uty "t"))
               (combp (varp "x" (uty "t")) (@tvar "0")))))
-      , section "elaborate w/ coercions"
+      , skip
+        (section "elaborate w/ coercions"
         [ ok-eq
             (absp (varp "x" (@funp [@treal, @tbool]))
               (combp (varp "y" (@funp [@tbool, @tcon "1"]))
@@ -369,10 +370,11 @@ elaborate_tests T :-
               (absp (typing (varp "x" (uty "t")) (@funp [@treal, @tbool]))
                 (combp (varp "y" (uty "t"))
                   (combp (varp "x" (uty "t")) (@tvar "0")))))
-        ]
+        ])
       ]
     )
   , assert SmallEnv
+    (skip
     ( section "elaborate2"
       [ ok-eq
           (absp (varp "x" (@funp [ptycon "complex" [], @tbool]))
@@ -388,5 +390,5 @@ elaborate_tests T :-
                           (@funp [@tcon "complex", @tbool]))
               (combp (varp "x" (uty "t")) (@tvar "0"))))
       ]
-    )
+    ))
   ].

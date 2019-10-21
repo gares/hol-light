@@ -59,6 +59,7 @@ kind test type.
 %%   2. Adding more clauses to `test.run-test`.
 %% ----------------------------------------------------------------------------
 
+type skip test -> test.
 type ok, ko prop -> test.
 type assert list prop -> test -> test.
 type section string -> list test -> test.
@@ -67,6 +68,7 @@ type ok-eq A -> (A -> prop) -> test.
 type ok-all, ok-ex (A -> test) -> test.
 
 pred run-test i:test, o:outcome.
+run-test (skip T) (ignore "Skiped test.").
 run-test (ok P) (success "") :- P, !.
 run-test (ok _) (failure "").
 

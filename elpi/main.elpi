@@ -9,7 +9,6 @@ accumulate verbosity.  % Logging mechanism.
 accumulate test.       % Unit test framework.
 accumulate pre_hol.    % HOL definititons in Elpi that do not depend on ML.
 accumulate bogus.      % Bogus definitions of HOL predicates.
-accumulate elab.       % First version of the elaborator.
 accumulate infer.      % Second version of the elaborator.
 
 %% ----------------------------------------------------------------------------
@@ -21,7 +20,6 @@ shorten verbosity.{ quiet, terse, info, verbose, debug, with-verbosity }.
 main :-
   with-verbosity terse (test.run-tests
     [ {pre_hol_tests}
-    , {elab_tests}
     , {infer_test}
     , {elaborate_tests}
     ]

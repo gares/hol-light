@@ -115,25 +115,6 @@ error L :- std.forall L (x\ print "Error:" x), fail.
 %% Tests.
 %% ----------------------------------------------------------------------------
 
-pred tiny_env o:list prop.
-tiny_env
-  [ env "0" "0" (ptybody @num)
-  , env "real_of_num" "real_of_num" (ptybody (@fun [@num, @real]))
-  , env "complex_of_real" "complex_of_real" (ptybody (@fun [@real, @complex]))
-  , coercions [coercion "real_of_num" (ptybody (@fun [@num, @real]))]
-  ].
-
-pred small_env o:list prop.
-small_env
-  [ env "0" "0" (ptybody @num)
-  , env "real_of_num" "real_of_num" (ptybody (@fun [@num, @real]))
-  , env "complex_of_real" "complex_of_real" (ptybody (@fun [@real, @complex]))
-  , coercions
-    [ coercion "real_of_num"     (ptybody (@fun [@num,  @real]))
-    , coercion "complex_of_real" (ptybody (@fun [@real, @complex]))
-    ]
-  ].
-
 shorten test.{ test, run-tests, ok, ko, okb, kob, ok-eq, assert, section }.
 
 macro @tm0 :-

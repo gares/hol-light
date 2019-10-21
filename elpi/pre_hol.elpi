@@ -316,6 +316,33 @@ trans-coercion A B T R1 :-
   trans-coercion A1 B (combp (constp S (ptycon "fun" [A, A1])) T) R1.
 
 %%% ---------------------------------------------------------------------------
+%%% Environments for tests.
+%%% ---------------------------------------------------------------------------
+
+pred tiny_env o:list prop.
+tiny_env
+  [ env "0" "0" (ptybody (ptycon "num" []))
+  , env "real_of_num" "real_of_num"
+        (ptybody (ptycon "fun" [ptycon "num" [], ptycon "real" []]))
+  , env "complex_of_real" "complex_of_real"
+        (ptybody (ptycon "fun" [ptycon "real" [], ptycon "complex" []]))
+  , coercions [coercion "real_of_num" (ptybody (ptycon "fun" [ptycon "num" [], ptycon "real" []]))]
+  ].
+
+pred small_env o:list prop.
+small_env
+  [ env "0" "0" (ptybody (ptycon "num" []))
+  , env "real_of_num" "real_of_num"
+        (ptybody (ptycon "fun" [ptycon "num" [], ptycon "real" []]))
+  , env "complex_of_real" "complex_of_real"
+        (ptybody (ptycon "fun" [ptycon "real" [], ptycon "complex" []]))
+  , coercions
+    [ coercion "real_of_num"     (ptybody (ptycon "fun" [ptycon "num" [],  ptycon "real" []]))
+    , coercion "complex_of_real" (ptybody (ptycon "fun" [ptycon "real" [], ptycon "complex" []]))
+    ]
+  ].
+
+%%% ---------------------------------------------------------------------------
 %%% Tests.
 %%% ---------------------------------------------------------------------------
 

@@ -1,7 +1,8 @@
-#use "topfind";;
-#require "elpi";;
+(*#use "topfind";;
+#require "elpi";;*)
 needs "elpi/pre_elpi.ml";;
 needs "elpi/pcheck.ml";;
+needs "tactics.ml";;
 
 unset_jrh_lexer;;
 
@@ -28,7 +29,8 @@ module Hol_elpi : sig
   (* compile elpi compile_files *)
   val compile_files : string list -> elpi_code
   val hol : unit -> elpi_code
-  
+  val current : unit -> elpi_code
+
   (* typecheck *)
   val typecheck : ?code:elpi_code -> unit -> unit
   val print2html : ?code:elpi_code -> unit -> unit
@@ -39,6 +41,11 @@ module Hol_elpi : sig
   (* activate debugging, eventually focus on some Elpi predicates *)
   type debug = On of string list | Off
   val debug : debug -> unit
+
+  (* use [accumulate (__POS_OF__ "text")] *)
+  val accumulate : (string * int * int * int) * string -> unit
+  val reset_current : unit -> unit
+  val typecheck_current : unit -> unit
 
   (* The ``quotation`` calling Elpi's elab predicate *)
   val quotation : string -> term
@@ -65,7 +72,7 @@ module Hol_elpi : sig
 
   (* calls cprover *)
   val search : term list -> term -> tactic
-        
+
 end = struct 
 
   unset_jrh_lexer;;
@@ -579,24 +586,49 @@ end = struct
 
   type elpi_code = Elpi.API.Compile.program
 
-  let compile_files fl : elpi_code =
+  let parse_files fl =
     try
-      let p = Parse.program fl in
-      Compile.program ~flags:Compile.default_flags header [p]
+      Parse.program fl
     with Parse.ParseError(loc,msg) ->
       failwith ("elpi: " ^ Elpi.API.Ast.Loc.show loc ^ ": " ^ msg)
   ;;
 
-  let hol () = compile_files
+  let parse_string ((file,lnum,cnum,enum),s) =
+    try
+      let loc = { Ast.Loc.source_name = file; line = lnum; line_starts_at = enum; source_start = cnum; source_stop = cnum } in
+      Parse.program_from_stream loc (Stream.of_string s)
+    with Parse.ParseError(loc,msg) ->
+      failwith ("elpi: " ^ Elpi.API.Ast.Loc.show loc ^ ": " ^ msg)
+  ;;
+
+  let compile_ast pl : elpi_code =
+      Compile.program ~flags:Compile.default_flags header pl
+  ;;
+
+  let hol_files =
     [ "elpi/verbosity.elpi"
-    ; "elpi/test.elpi"
-    ; "elpi/pre_hol.elpi"
-    ; "elpi/elab.elpi"
-    ; "elpi/infer.elpi"
-    ; "elpi/algebra.elpi"
-    ; "elpi/cprover.elpi"
-    ; "elpi/hol.elpi"
-    ];;
+        ; "elpi/test.elpi"
+        ; "elpi/pre_hol.elpi"
+    (*    ; "elpi/elab.elpi" *)
+        ; "elpi/infer.elpi"
+    (*    ; "elpi/algebra.elpi"
+        ; "elpi/cprover.elpi"
+        ; "elpi/hol.elpi" *)
+        ];;
+
+  let hol () = compile_ast [parse_files hol_files]
+    
+  let extra_code = ref []
+
+  let accumulate loc_text =
+    extra_code := !extra_code @ [loc_text]
+
+  let reset_current () = extra_code := []
+
+  let current () =
+    compile_ast (parse_files hol_files :: List.map parse_string !extra_code)
+
+  let compile_files fl = compile_ast [parse_files fl]
 
   type debug = On of string list | Off
 
@@ -620,6 +652,14 @@ end = struct
     if not (Compile.static_check h ~checker:[Parse.program ["elpi/elpi-checker.elpi"]] q) then
       failwith "elpi: type error"
   ;;
+
+  let typecheck_current () =
+    let q = Parse.goal (Ast.Loc.initial "(query)") "true" in
+    let q = Compile.query (current ()) q in
+    let are_we_debugging = !debugging in
+    Setup.trace [];
+    ignore(static_check header q);
+    debug are_we_debugging
 
   let run_text ?max_steps program query =
     let q = Parse.goal (Ast.Loc.initial "(query)") query in
@@ -658,14 +698,14 @@ end = struct
   (* ================================================================ *)
   (* Entry points to call elpi code *)
 
-  let query ?max_steps ?(code=hol ()) s = run_text ?max_steps code s;;
+  let query ?max_steps ?(code=current ()) s = run_text ?max_steps code s;;
 
-  let typecheck ?(code=hol ()) () =
+  let typecheck ?(code=current ()) () =
     let q = Parse.goal (Ast.Loc.initial "(query)") "true" in
     let q = Compile.query code q in
     static_check header q
 
-  let print2html ?(code=hol ()) () =
+  let print2html ?(code=current ()) () =
     let q = Parse.goal (Ast.Loc.initial "(query)") "true" in
     let q = Compile.query code q in
     let quotedP, _  = Quotation.quote_syntax q in
@@ -680,7 +720,7 @@ end = struct
 
 
   let prove concl =
-    let x, _ = run_predicate (hol ())
+    let x, _ = run_predicate (current ())
       (Query.Query {
         predicate = "prove";
         arguments = D(Hol_preterm.t,preterm_of_term concl,
@@ -691,7 +731,7 @@ end = struct
   ;;
 
   let step (goal : goal) : goalstate =
-    let goals, (just, _) = run_predicate (hol ())
+    let goals, (just, _) = run_predicate (current ())
       (Query.Query {
         predicate = "step";
         arguments = D(Tactics.goal,Tactics.holg2elpig goal,
@@ -706,7 +746,7 @@ end = struct
 
   (* This runs the elpi query requesting the elaboration of a given term *)
   let elaborate_preterm p =
-    let elab_p, _ = run_predicate ~typecheck:false (hol ())
+    let elab_p, _ = run_predicate ~typecheck:false (current ())
       (Query.Query {
         predicate = !elab_predicate;
         arguments = D(Hol_preterm.t,p,
@@ -737,7 +777,7 @@ end = struct
   ;;
 
   let search hyps concl =
-    let proof, () = run_predicate ~typecheck:false (hol ())
+    let proof, () = run_predicate ~typecheck:false (current ())
       (Query.Query {
         predicate = "search";
         arguments = D(BuiltInData.list Hol_preterm.t,List.map preterm_of_term hyps,

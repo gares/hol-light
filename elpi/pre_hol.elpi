@@ -244,7 +244,7 @@ free-vars (absp (typing (varp _ _ as V) _) T) L L1 :-
 pred freevars i:preterm, o:list string.
 freevars (varp S _) [] :- numeral S _N, !.
 freevars (varp S _) [] :- hol.interface S [_|_], !.
-freevars (varp S _) [] :- env S _ _, !.
+freevars (varp S _) [] :- hol.env S _, !.
 freevars (varp S _) [S].
 freevars (typing X _) Vs :- freevars X Vs.
 freevars (combp X Y) Vs :- union {freevars X} {freevars Y} Vs.

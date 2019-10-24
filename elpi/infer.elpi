@@ -61,11 +61,13 @@ pred infer i:preterm, o:preterm, o:pretype.
 
 %%% Variables.
 
+:name "infer:numeral"
 infer (varp S _) N @tnum :- numeral S N, !.
+:name "infer:overload"
 infer (varp S _) X A :- hol.interface S L, infer.overload S L X A.
 
 pred infer.overload i:string, i:list(pair string pretype), o:preterm, o:pretype.
-infer.overload S [] (constp S A) A :- env S _ C, !, refresh-cpretype C A.
+infer.overload S [] (constp S A) A :- hol.env S C, !, close-pretype C CT, refresh-cpretype CT A.
 infer.overload S [] (varp S A) A :- skeleton S A, !.
 infer.overload _ [pr S1 K] X A :- !,
   close-pretype K C,
@@ -78,11 +80,12 @@ infer.overload _ ((_ :: _ :: _) as L) X A :-
   infer.env S1 X A.
 
 pred infer.env i:string, o:preterm, o:pretype.
-infer.env S (constp S A) A :- env S _ C, !, refresh-cpretype C A.
+infer.env S (constp S A) A :- hol.env S C, !, close-pretype C CT, refresh-cpretype CT A.
 infer.env S (varp   S A) A.
 
 %%% Combinations.
 
+:name "infer:app"
 infer (combp F X) (combp F1 X1) B :-
   infer F F1 (@tfun A B),
   infer X X1 A.
@@ -95,10 +98,16 @@ infer (combp F X) (combp F1 X1) B :-
 %%% NB: the HOL function `term_of_preterm` takes care of
 %%% returning a generalized abstraction when needed.
 
+%% Anchor point to enrich
+pred infer.knowledge i:preterm, i:pretype, o:list prop.
+:name "infer:lam:knowledge"
+infer.knowledge _ _ [].
+
+:name "infer:lam"
 infer (absp X Y) (absp X1 Y1) (@tfun A B) :-
   freevars X Us,
   std.map Us build-fvar-clause P,
-  P => (infer X X1 A, infer Y Y1 B).
+  P => (infer X X1 A, infer.knowledge X1 A CL, CL => infer Y Y1 B).
 
 %%% Clause that produces the concrete form of the generalized abstraction.
 %%% This predicate and the next two are not used now.
@@ -128,6 +137,7 @@ macro @gabs A B X :-
 
 %%% Type annotations.
 
+:name "infer:cast"
 infer (typing X A) X1 A :-
   infer X X1 A.
   %% Version with coercions.

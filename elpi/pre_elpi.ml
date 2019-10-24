@@ -2,6 +2,8 @@
 (* ML code needed for HOL-Elpi that do not depend on Elpi.                   *)
 (* ========================================================================= *)
 
+needs "tactics.ml";;
+
 (* ------------------------------------------------------------------------- *)
 (* Miscellanea.                                                              *)
 (* ------------------------------------------------------------------------- *)
@@ -42,7 +44,7 @@ let print_hide_coercions fmt tm =
 (* Minimal set of coercions.                                                 *)
 (* ------------------------------------------------------------------------- *)
 
-(* Bogus definition of constant types and terms when needed. *)
+(* Bogus definition of constant types and terms when needed. 
 
 try new_type ("real",0) with Failure _ -> ();;
 try new_type ("int" ,0) with Failure _ -> ();;
@@ -52,7 +54,7 @@ try new_constant ("real_of_int", `:int->real`) with Failure _ -> ();;
 
 add_coercion `int_of_num`;;
 add_coercion `real_of_int`;;
-
+*)
 (* add_coercion `real_of_num`;; *)
 (* add_coercion `ring_carrier`;; *)
 
@@ -80,9 +82,9 @@ try_user_printer std_formatter `&0`;;
 (* Unsafe translation from preterm to terms.  Introduces an ad hoc constant  *)
 (* for "casting" a subterm as needed term.  Never fails.                     *)
 (* ------------------------------------------------------------------------- *)
-
+(*
 new_constant ("unsafe_cast", `:A -> B`);;
-
+*)
 let unsafe_cast_tm ty ty' = mk_mconst("unsafe_cast",mk_fun_ty ty ty');;
 
 let unsafe_mk_comb (tm1,tm2) =

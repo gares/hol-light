@@ -20,14 +20,14 @@ type ('individual,'formula) proof =
    | Pexists_l of  'individual * 'formula * ('individual,'formula) proof
    | Pexists_r of  'individual * ('individual,'formula) proof
    | Pall;;
-
+let pcheck x = assert false (*
 let rec pcheck = function
-  | Pinitial a ->
-      ACCEPT_TAC (ASSUME (term_of_preterm a))
-  | Pand_l(a,b,p') ->
+  | Pinitial a -> (*
+      ACCEPT_TAC (ASSUME (term_of_preterm a))*) assert false
+  | Pand_l(a,b,p') -> (*
       CONJUNCTS_THEN ASSUME_TAC
         (ASSUME (mk_conj (term_of_preterm a, term_of_preterm b))) THEN
-      pcheck p'
+      pcheck p'*) assert false
   | Pand_r(p,q) ->
       CONJ_TAC THENL [pcheck p; pcheck q]
   | Pimp_r(p) ->
@@ -71,7 +71,7 @@ let rec pcheck = function
   | Pall -> ALL_TAC
   | _ -> failwith "Not implemented yet"
 ;;
-
+*)
 (* ------------------------------------------------------------------------ *)
 (* Tests                                                                    *)
 (* ------------------------------------------------------------------------ *)
